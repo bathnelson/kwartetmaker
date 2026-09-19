@@ -111,8 +111,11 @@ De code staat op GitHub (`bathnelson/kwartetmaker`). `laden.js` op Vimexx vraagt
 GitHub bij het openen welke versie de nieuwste is en haalt dan alle css en js op
 via het jsDelivr-CDN, met dat versienummer in het adres. Gevolg:
 
-- Een update uitrollen is `git push`. Bij de volgende keer laden heeft iedereen
-  de nieuwe versie; de pagina's op Vimexx hoeven niet te veranderen.
+- Een update uitrollen is `git push`. Binnen ongeveer een minuut (zo lang
+  houdt GitHub het antwoord vast) krijgt iedereen bij de volgende keer laden de
+  nieuwe versie; de pagina's op Vimexx hoeven niet te veranderen.
+- Welke versie je draait, zie je door je muis op "Kwartetmaker" linksboven te
+  houden.
 - Je krijgt altijd alle bestanden van precies dezelfde versie, nooit een mix
   van oud en nieuw uit de browsercache.
 - Is GitHub even onbereikbaar, dan valt `laden.js` terug op de laatste versie
