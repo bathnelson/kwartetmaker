@@ -8,8 +8,9 @@
 // ander. Zo overschrijft niemand elkaars werk, zolang je niet precies hetzelfde
 // veld tegelijk aanpast (dan wint wie het laatst opslaat).
 
-const CARD_KEYS = ['title', 'photoId', 'focus', 'zoom'];
-const BACK_KEYS = ['color', 'title', 'pattern', 'photoId', 'focus', 'zoom'];
+// Alle velden worden samengevoegd, ook velden die deze versie van de app nog
+// niet kent. Zo kan een oudere versie die nog ergens openstaat geen gegevens van
+// een nieuwere versie weggooien.
 
 const clone = (x) => (x === undefined ? undefined : JSON.parse(JSON.stringify(x)));
 
@@ -25,27 +26,29 @@ export function equal(a, b) {
 
 const pick = (b, l, r) => clone(equal(l, b) ? r : l);
 
-function mergeFields(b = {}, l = {}, r = {}, keys) {
+function mergeFields(b = {}, l = {}, r = {}, behalve = []) {
   const out = {};
-  for (const k of keys) out[k] = pick(b[k], l[k], r[k]);
+  const keys = new Set([...Object.keys(b || {}), ...Object.keys(l || {}), ...Object.keys(r || {})]);
+  for (const k of keys) {
+    if (behalve.includes(k)) continue;
+    const v = pick((b || {})[k], (l || {})[k], (r || {})[k]);
+    if (v !== undefined) out[k] = v;       // hier weggehaald, of nergens: weglaten
+  }
   return out;
 }
 
 function mergeQuartet(b, l, r) {
   if (!b) return clone(l);
   return {
-    id: l.id,
-    theme: pick(b.theme, l.theme, r.theme),
-    color: pick(b.color, l.color, r.color),
-    cards: l.cards.map((lc, i) => ({
-      id: lc.id,
-      ...mergeFields(b.cards[i], lc, r.cards[i], CARD_KEYS),
-    })),
+    ...mergeFields(b, l, r, ['cards']),
+    cards: l.cards.map((lc, i) => mergeFields(b.cards && b.cards[i], lc, r.cards && r.cards[i])),
   };
 }
 
-function mergeQuartets(bl = [], ll = [], rl = []) {
-  const byId = (list) => new Map(list.map((q) => [q.id, q]));
+// Lijst met items (elk met een id) samenvoegen. Nieuw aan één kant: erbij.
+// Aan één kant verwijderd: weg, tenzij de andere kant hem intussen aanpaste.
+function mergeList(bl = [], ll = [], rl = [], mergeItem) {
+  const byId = (list) => new Map(list.map((x) => [x.id, x]));
   const B = byId(bl);
   const L = byId(ll);
   const R = byId(rl);
@@ -55,7 +58,7 @@ function mergeQuartets(bl = [], ll = [], rl = []) {
   for (const r of rl) {
     const l = L.get(r.id);
     const b = B.get(r.id);
-    if (l) out.push(mergeQuartet(b, l, r));
+    if (l) out.push(mergeItem(b, l, r));
     else if (!b) out.push(clone(r));                // nieuw op de andere computer
     else if (!equal(r, b)) out.push(clone(r));      // hier verwijderd, daar aangepast: bewaren
     // anders hier verwijderd
@@ -70,12 +73,17 @@ function mergeQuartets(bl = [], ll = [], rl = []) {
   return out;
 }
 
+function mergeTodo(b, l, r) {
+  return b ? mergeFields(b, l, r) : clone(l);
+}
+
 export function mergeGame(base, local, remote) {
   if (!remote) return clone(local);
   if (!base) return clone(remote);
   return {
-    title: pick(base.title, local.title, remote.title),
-    back: mergeFields(base.back, local.back, remote.back, BACK_KEYS),
-    quartets: mergeQuartets(base.quartets, local.quartets, remote.quartets),
+    ...mergeFields(base, local, remote, ['back', 'todos', 'quartets']),
+    back: mergeFields(base.back, local.back, remote.back),
+    todos: mergeList(base.todos, local.todos, remote.todos, mergeTodo),
+    quartets: mergeList(base.quartets, local.quartets, remote.quartets, mergeQuartet),
   };
 }

@@ -47,6 +47,7 @@ function kaartModel(q, qi, ci) {
     image: c.photoId ? images.get(c.photoId) || null : null,
     focus: c.focus,
     zoom: c.zoom,
+    fit: c.fit,
     hints: false,
   };
 }
@@ -56,7 +57,7 @@ function achterModel() {
   const kleur = b.color || '#2f4858';
   return {
     color: kleur, title: b.title || spel.title, pattern: b.pattern,
-    image: b.photoId ? images.get(b.photoId) || null : null, focus: b.focus, zoom: b.zoom,
+    image: b.photoId ? images.get(b.photoId) || null : null, focus: b.focus, zoom: b.zoom, fit: b.fit,
     ink: inkOn(kleur), soft: mix(kleur, inkOn(kleur), 0.16),
   };
 }

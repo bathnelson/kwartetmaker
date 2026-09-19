@@ -14,6 +14,7 @@
   </label>
   <div class="spacer"></div>
   <span id="status" class="status"></span>
+  <button id="openTaken" class="btn" aria-pressed="false">Taken <span id="takenAantal" class="badge" hidden></span></button>
   <button id="openShare" class="btn serveronly" hidden>Delen…</button>
   <button id="openPrint" class="btn">Printvellen…</button>
   <button id="exportAll" class="btn primary">Exporteer alles</button>
@@ -23,6 +24,7 @@
   <aside class="sidebar">
     <div class="sidebar-head">
       <h2>Kwartetten</h2>
+      <button id="sorteer" class="sorteer" type="button" aria-pressed="false">A–Z</button>
       <span id="progress" class="muted"></span>
     </div>
     <ol id="quartetList" class="quartet-list"></ol>
@@ -41,6 +43,28 @@
   </aside>
 
   <section id="editor" class="editor"></section>
+
+  <aside id="taken" class="taken" hidden aria-label="Takenlijst">
+    <div class="taken-kop">
+      <h2>Takenlijst</h2>
+      <button id="sluitTaken" class="btn link" type="button" title="Sluiten">✕</button>
+    </div>
+    <p id="takenUitleg" class="hint"></p>
+    <form id="takenForm" class="taken-nieuw">
+      <input id="takenTekst" type="text" placeholder="Wat moet er nog gebeuren, of wat mis je?" autocomplete="off">
+      <button class="btn primary" title="Toevoegen">+</button>
+    </form>
+    <label class="check taken-koppel"><input id="takenKoppel" type="checkbox"> <span id="takenKoppelTekst"></span></label>
+    <ul id="takenLijst" class="taken-lijst"></ul>
+    <details id="takenKlaarBlok" class="taken-klaar" hidden>
+      <summary id="takenKlaarKop"></summary>
+      <ul id="takenKlaarLijst" class="taken-lijst"></ul>
+      <button id="takenOpruimen" class="btn link" type="button">Afgevinkte weghalen</button>
+    </details>
+    <label class="taken-naam">Je naam
+      <input id="takenNaam" type="text" placeholder="zodat anderen zien wie wat schreef" autocomplete="off">
+    </label>
+  </aside>
 </main>
 
 <input id="filePicker" type="file" accept="image/*" multiple hidden>
@@ -91,6 +115,7 @@
         <div class="back-preview preview"><canvas id="backPreview"></canvas></div>
         <div class="cardtools">
           <button type="button" class="icon" id="backPick" title="Afbeelding kiezen">🖼</button>
+          <button type="button" class="icon fit" id="backFit"></button>
           <input id="backZoom" class="zoom" type="range" min="1" max="3" step="0.01" title="Inzoomen">
           <button type="button" class="icon" id="backClear" title="Afbeelding verwijderen">✕</button>
         </div>
@@ -126,6 +151,7 @@
     </div>
   </form>
 </dialog>
+
 
 <div id="toast" class="toast" hidden></div>
 <script type="module" src="js/app.js"></script>

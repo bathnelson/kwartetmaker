@@ -115,7 +115,10 @@ via het jsDelivr-CDN, met dat versienummer in het adres. Gevolg:
   houdt GitHub het antwoord vast) krijgt iedereen bij de volgende keer laden de
   nieuwe versie; de pagina's op Vimexx hoeven niet te veranderen.
 - Welke versie je draait, zie je door je muis op "Kwartetmaker" linksboven te
-  houden.
+  houden. Staat er intussen een nieuwere klaar, dan verschijnt bovenin een
+  melding met *Herladen* (die eerst alles opslaat).
+- Een oudere versie die nog ergens openstaat, laat gegevens van een nieuwere
+  versie met rust: velden die hij niet kent, blijven bewaard.
 - Je krijgt altijd alle bestanden van precies dezelfde versie, nooit een mix
   van oud en nieuw uit de browsercache.
 - Is GitHub even onbereikbaar, dan valt `laden.js` terug op de laatste versie
@@ -198,8 +201,26 @@ wachtwoord - anders als tekst uitserveren.
   van dat kwartet automatisch gevuld. Klikken op een leeg kaartje of plakken
   (⌘V) werkt ook.
 - **Uitsnede**: sleep in het kaartje om de foto te verschuiven, scroll om in te
-  zoomen. Wijs je een kaartje aan, dan verschijnt er bovenop een balkje met 🖼
-  (andere foto), een zoomschuif en ✕ (foto weg).
+  zoomen. Wijs je een kaartje aan, dan verschijnt er bovenop een balkje met
+  ⠿ (verslepen), 🖼 (andere foto), ⬚/▣ (vullen of hele foto), ✕ (foto weg),
+  🗑 (kaartje leegmaken) en een zoomschuif.
+- **Staande foto's**: het fotovak is liggend. Een staande foto krijgt daarom
+  automatisch *hele foto*: de foto staat er helemaal op, met links en rechts een
+  vervaagde versie van dezelfde foto als opvulling. Met ⬚/▣ wissel je per
+  kaartje tussen dat en *vullen* (kader helemaal vol, randen vallen weg). Voor de
+  achterkant zit dezelfde knop in het printvenster.
+- **Wisselen**: pak een kaartje aan ⠿ en laat het op een ander kaartje vallen:
+  foto én titel wisselen van plek. Houd ⌥ ingedrukt bij het loslaten om alleen
+  de foto's te wisselen. De kleine ⠿ voor een titelveld wisselt alleen titels.
+- **Leegmaken**: 🗑 haalt foto en titel weg; in de melding onderin kun je het
+  nog ongedaan maken.
+- **Zoeken**: A–Z boven de lijst sorteert de kwartetten op naam. Alleen de lijst:
+  de nummers op de kaartjes blijven gelijk, zodat geprinte kaartjes kloppen.
+- **Takenlijst**: *Taken* bovenin toont of verbergt een lijst voor dingen die
+  nog moeten gebeuren of die je mist; het bolletje telt wat er nog openstaat.
+  Een taak kan bij een kwartet horen (klik erop om ernaartoe te gaan). Vul je
+  naam in, dan zien anderen wie wat schreef. In de gehoste versie is de lijst
+  gedeeld en live; dubbelklik om een taak aan te passen.
 - **Naast Photos**: de app is gemaakt om in split screen naast Apple Photos te
   werken (bijv. een halve iMac 21,5"). De vier kaartjes staan in een 2×2 en
   schalen mee met de hoogte van het venster, zodat ze altijd alle vier in beeld

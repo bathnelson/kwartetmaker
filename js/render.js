@@ -43,6 +43,50 @@ export function drawCover(ctx, img, x, y, w, h, focus, zoom) {
   ctx.drawImage(img, x + (w - dw) * fx, y + (h - dh) * fy, dw, dh);
 }
 
+// Vervaagde opvulling: de foto sterk verkleinen en weer uitvergroten. Werkt in
+// elke browser (ook zonder ctx.filter) en ziet er in preview en print hetzelfde uit.
+function drawBlurFill(ctx, img, x, y, w, h) {
+  const stap = document.createElement('canvas');
+  stap.width = Math.max(8, Math.round(w / 5));
+  stap.height = Math.max(8, Math.round(h / 5));
+  const s1 = stap.getContext('2d');
+  s1.imageSmoothingQuality = 'high';
+  drawCover(s1, img, 0, 0, stap.width, stap.height);
+  const klein = document.createElement('canvas');
+  klein.width = Math.max(6, Math.round(w / 24));
+  klein.height = Math.max(6, Math.round(h / 24));
+  const s2 = klein.getContext('2d');
+  s2.imageSmoothingQuality = 'high';
+  s2.drawImage(stap, 0, 0, klein.width, klein.height);
+
+  ctx.save();
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(klein, x - w * 0.05, y - h * 0.05, w * 1.1, h * 1.1);
+  ctx.fillStyle = 'rgba(0,0,0,0.10)';          // iets donkerder, zodat de foto zelf eruit springt
+  ctx.fillRect(x, y, w, h);
+  ctx.restore();
+}
+
+/**
+ * Foto in een vak: 'vullen' (standaard, vak helemaal vol, randen vallen weg) of
+ * 'passend' (hele foto zichtbaar, lege ruimte opgevuld met een vervaagde versie).
+ */
+export function drawPhoto(ctx, img, x, y, w, h, focus, zoom, fit) {
+  if (fit !== 'passend') {
+    drawCover(ctx, img, x, y, w, h, focus, zoom);
+    return;
+  }
+  drawBlurFill(ctx, img, x, y, w, h);
+  const s = Math.min(w / img.width, h / img.height) * (zoom || 1);
+  const dw = img.width * s;
+  const dh = img.height * s;
+  // Past de foto in het vak, dan in het midden; is hij ingezoomd groter, dan telt de uitsnede.
+  const fx = dw > w && focus ? focus.x : 0.5;
+  const fy = dh > h && focus ? focus.y : 0.5;
+  ctx.drawImage(img, x + (w - dw) * fx, y + (h - dh) * fy, dw, dh);
+}
+
 function fitText(ctx, text, maxWidth, baseSize, weight) {
   let size = baseSize;
   ctx.font = `${weight} ${size}px ${FONT}`;
@@ -99,7 +143,7 @@ export function drawCard(ctx, W, card, style) {
   roundRect(ctx, p.x, p.y, p.w, p.h, 0.012 * W);
   ctx.clip();
   if (card.image) {
-    drawCover(ctx, card.image, p.x, p.y, p.w, p.h, card.focus, card.zoom);
+    drawPhoto(ctx, card.image, p.x, p.y, p.w, p.h, card.focus, card.zoom, card.fit);
   } else {
     ctx.fillStyle = '#f2f4f6';
     ctx.fillRect(p.x, p.y, p.w, p.h);
@@ -173,7 +217,7 @@ export function drawBack(ctx, W, back, style) {
 
   // eigen afbeelding: vult het hele kaartje
   if (back.image) {
-    drawCover(ctx, back.image, 0, 0, W, H, back.focus, back.zoom);
+    drawPhoto(ctx, back.image, 0, 0, W, H, back.focus, back.zoom, back.fit);
   }
 
   // motief: alleen als er geen eigen afbeelding is
