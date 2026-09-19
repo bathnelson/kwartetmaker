@@ -965,6 +965,10 @@ function vraagWachtwoord(melding) {
 /* ---------------- start ---------------- */
 
 async function init() {
+  // Welke versie draait er? (Gehost: de commit op GitHub, zie vimexx/laden.js.)
+  const versie = /@([0-9a-f]{7})/.exec(window.KWARTET_BRON || '');
+  el('.brand').title = versie ? `Versie ${versie[1]}` : 'Lokale versie';
+
   const verbinding = await store.connect();
   if (verbinding.server) {
     document.querySelectorAll('.serveronly').forEach((n) => { n.hidden = false; });
