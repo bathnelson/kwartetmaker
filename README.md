@@ -295,6 +295,14 @@ en staat er de volgende keer weer. Twee dingen om te weten:
 Foto's worden bij het plaatsen verkleind naar maximaal 1800 px en opgeslagen
 als JPEG, ruim genoeg voor printkwaliteit.
 
+## Testen
+
+Het samenvoegen van wijzigingen (het lastigste stuk) heeft eigen tests:
+
+```bash
+node tests/sync.test.mjs
+```
+
 ## Bestanden
 
 | Bestand | Wat het doet |
@@ -310,6 +318,7 @@ als JPEG, ruim genoeg voor printkwaliteit.
 | `js/store-local.js` | opslag in de browser (IndexedDB) |
 | `js/store-server.js` | opslag via `api.php` |
 | `js/sync.js` | voegt wijzigingen van verschillende computers samen |
+| `tests/sync.test.mjs` | tests voor dat samenvoegen |
 | `bekijk.html`, `js/bekijk.js`, `css/bekijk.css` | de bekijkpagina achter de deel-link |
 | `api.php` | de server-opslag voor de gehoste versie |
 | `.htaccess` | afscherming op de webhost |
