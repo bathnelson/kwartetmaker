@@ -2,9 +2,19 @@
 // app niet hoeft te weten waar het spel staat.
 const API = 'api.php';
 
-async function vraag(url, options = {}) {
-  const res = await fetch(url, { credentials: 'same-origin', ...options });
-  return res;
+const wacht = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// Webhosts remmen af als er veel verzoeken vlak achter elkaar komen (429 "Too
+// Many Requests", soms 503), bijvoorbeeld bij een back-up of printvellen met
+// tientallen foto's. Dan even wachten en opnieuw proberen: eerst 1 s, dan 2, 4,
+// 8 en 15 s - of zo lang als de server zelf aangeeft (Retry-After).
+export async function vraag(url, options = {}, pogingen = 6) {
+  for (let i = 0; ; i++) {
+    const res = await fetch(url, { credentials: 'same-origin', ...options });
+    if ((res.status !== 429 && res.status !== 503) || i >= pogingen - 1) return res;
+    const opgegeven = Number(res.headers.get('Retry-After'));
+    await wacht(opgegeven > 0 ? opgegeven * 1000 : Math.min(1000 * 2 ** i, 15000) + Math.random() * 300);
+  }
 }
 
 async function json(res) {

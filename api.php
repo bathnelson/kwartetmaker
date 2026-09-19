@@ -14,7 +14,8 @@ $fotomap    = $datamap . '/fotos';
 
 // Ophogen als de app (js/) iets nieuws van deze server nodig heeft; de app
 // meldt dan dat api.php opnieuw geüpload moet worden.
-const API_VERSIE = 2;                 // 2 = versienummers, samenwerken, deel-link
+const API_VERSIE = 3;                 // 2 = versienummers, samenwerken, deel-link
+                                      // 3 = back-up als zip in één verzoek
 
 const MAX_FOTO = 8 * 1024 * 1024;     // 8 MB per foto
 const MAX_SPEL = 4 * 1024 * 1024;     // 4 MB json
@@ -87,6 +88,46 @@ function ruim_fotos_op(string $json, string $fotomap): void
             @unlink($pad);
         }
     }
+}
+
+/**
+ * Stuurt een zip (zonder compressie; foto's zijn al gecomprimeerd) direct naar
+ * de browser. Bestanden worden één voor één gelezen, dus weinig geheugen nodig.
+ *
+ * @param array<string,string> $teksten naam in de zip => inhoud
+ * @param string[]             $fotos   paden; komen in de zip als fotos/<naam>
+ */
+function stuur_zip(array $teksten, array $fotos): void
+{
+    $nu = getdate();
+    $tijd = ($nu['hours'] << 11) | ($nu['minutes'] << 5) | intdiv($nu['seconds'], 2);
+    $datum = (($nu['year'] - 1980) << 9) | ($nu['mon'] << 5) | $nu['mday'];
+    $centraal = '';
+    $offset = 0;
+    $aantal = 0;
+
+    $voegToe = function (string $naam, string $inhoud) use (&$centraal, &$offset, &$aantal, $tijd, $datum): void {
+        $crc = crc32($inhoud);
+        $len = strlen($inhoud);
+        $nl = strlen($naam);
+        $lokaal = pack('VvvvvvVVVvv', 0x04034b50, 20, 0x0800, 0, $tijd, $datum, $crc, $len, $len, $nl, 0) . $naam;
+        echo $lokaal, $inhoud;
+        flush();
+        $centraal .= pack('VvvvvvvVVVvvvvvVV', 0x02014b50, 20, 20, 0x0800, 0, $tijd, $datum,
+                          $crc, $len, $len, $nl, 0, 0, 0, 0, 0, $offset) . $naam;
+        $offset += strlen($lokaal) + $len;
+        $aantal++;
+    };
+
+    foreach ($teksten as $naam => $inhoud) {
+        $voegToe($naam, $inhoud);
+    }
+    foreach ($fotos as $pad) {
+        if (is_file($pad)) {
+            $voegToe('fotos/' . basename($pad), (string)file_get_contents($pad));
+        }
+    }
+    echo $centraal, pack('VvvvvVVv', 0x06054b50, 0, 0, $aantal, $aantal, strlen($centraal), $offset, 0);
 }
 
 /** Schrijft eerst naar een tijdelijk bestand en hernoemt: nooit een half bestand. */
@@ -224,6 +265,30 @@ switch ($actie) {
         }
         $huidig = lees_deeltoken($deelbestand);
         antwoord(['token' => $huidig !== '' ? $huidig : null]);
+
+    case 'backup':
+        // Het hele spel met foto's als één zip, in één verzoek. Losse verzoeken
+        // per foto lopen bij sommige hosts tegen een limiet aan (429).
+        $spel = is_file($spelbestand) ? (string)file_get_contents($spelbestand) : 'null';
+        $data = json_decode($spel, true);
+        $titel = is_array($data) && is_string($data['title'] ?? null) && trim($data['title']) !== ''
+            ? trim($data['title']) : 'Kwartet';
+        preg_match_all('/"photoId"\s*:\s*"([A-Za-z0-9_-]{8,64})"/', $spel, $m);
+
+        @set_time_limit(300);
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+        $naam = preg_replace('/[\/\\\\:*?"<>|\r\n]+/', '-', $titel) . ' - back-up.zip';
+        header('Content-Type: application/zip');
+        header('Cache-Control: no-store');
+        header('Content-Disposition: attachment; filename="kwartet-back-up.zip"; filename*=UTF-8\'\'' . rawurlencode($naam));
+
+        stuur_zip(
+            ['spel.json' => '{"app":"kwartetmaker","versie":1,"spel":' . $spel . '}'],
+            array_map(fn ($id) => $fotomap . '/' . $id . '.jpg', array_unique($m[1]))
+        );
+        exit;
 
     case 'fotos':
         $ids = [];

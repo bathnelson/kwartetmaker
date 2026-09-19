@@ -252,6 +252,11 @@ Onderin de zijbalk:
 Zo verhuis je een spel ook naar de andere computer, naar een andere browser, of
 terug na het wissen van je websitegegevens.
 
+In de gehoste versie maakt de server de zip in één keer. Veel losse verzoeken
+vlak achter elkaar (een foto per verzoek) kunnen bij een webhost tegen een limiet
+aanlopen ("429 Too Many Requests"); gebeurt dat toch, bijvoorbeeld bij printvellen
+met veel foto's, dan wacht de app even en probeert het opnieuw.
+
 ## Printvellen
 
 *Printvellen…* in de balk bovenin maakt één PDF met alle kaartjes:

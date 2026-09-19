@@ -1278,6 +1278,21 @@ function normalizeGame(raw) {
 /* ---------------- back-up ---------------- */
 
 async function makeBackup() {
+  // Gehost met een nieuwe api.php: de server maakt de zip zelf, in één verzoek.
+  // Scheelt tientallen losse verzoeken waar de host op kan afremmen.
+  if (store.opServer && store.apiVersie >= 3) {
+    toast('Back-up maken…', 60000);
+    await bewaarNu();                              // eerst de laatste wijzigingen naar de server
+    const a = document.createElement('a');
+    a.href = 'api.php?actie=backup';
+    a.download = `${safeName(game.title, 'Kwartet')} - back-up.zip`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    toast('Back-up wordt gedownload.');
+    return;
+  }
+
   const files = [{
     name: 'spel.json',
     data: new TextEncoder().encode(JSON.stringify({ app: 'kwartetmaker', versie: 1, spel: game }, null, 2)),
@@ -1285,9 +1300,13 @@ async function makeBackup() {
   const ids = new Set();
   for (const q of game.quartets) for (const c of q.cards) if (c.photoId) ids.add(c.photoId);
   if (game.back.photoId) ids.add(game.back.photoId);
+  let n = 0;
   for (const id of ids) {
+    n++;
+    toast(`Back-up maken… foto ${n} van ${ids.size}`, 60000);
     const blob = await store.getPhoto(id);
     if (blob) files.push({ name: `fotos/${id}.jpg`, data: new Uint8Array(await blob.arrayBuffer()) });
+    if (store.opServer) await new Promise((r) => setTimeout(r, 60));   // de host niet overvragen
   }
   downloadBlob(makeZip(files), `${safeName(game.title, 'Kwartet')} - back-up.zip`);
   toast(`Back-up gemaakt: ${ids.size} foto's en alle titels.`);

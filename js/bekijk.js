@@ -24,7 +24,13 @@ async function laadFoto(id) {
   if (!id || images.has(id)) return;
   images.set(id, null);                                   // niet dubbel ophalen
   try {
-    const res = await fetch(api('foto', `&id=${encodeURIComponent(id)}`));
+    // Bij afremmen door de host (429/503) even wachten en opnieuw.
+    let res;
+    for (let i = 0; i < 5; i++) {
+      res = await fetch(api('foto', `&id=${encodeURIComponent(id)}`));
+      if (res.status !== 429 && res.status !== 503) break;
+      await new Promise((r) => setTimeout(r, Math.min(1000 * 2 ** i, 10000)));
+    }
     if (res.ok) images.set(id, await createImageBitmap(await res.blob()));
   } catch (e) { /* laat leeg */ }
 }

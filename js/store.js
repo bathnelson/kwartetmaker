@@ -5,6 +5,7 @@ import * as server from './store-server.js';
 
 let impl = lokaal;
 export let opServer = false;
+export let apiVersie = 0;          // wat api.php op de server kan (zie API_VERSIE daar)
 
 // Welke api.php deze versie van de app minimaal nodig heeft (zie API_VERSIE daar).
 const NODIGE_API = 2;
@@ -17,6 +18,7 @@ export async function connect() {
   if (!info) return { server: false, inloggenNodig: false };
   impl = server;
   opServer = true;
+  apiVersie = info.api || 1;
   if ((info.api || 1) < NODIGE_API) {
     return {
       server: true, inloggenNodig: true,
