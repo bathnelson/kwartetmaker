@@ -207,8 +207,10 @@ wachtwoord - anders als tekst uitserveren.
 - **Staande foto's**: het fotovak is liggend. Een staande foto krijgt daarom
   automatisch *hele foto*: de foto staat er helemaal op, met links en rechts een
   vervaagde versie van dezelfde foto als opvulling. Met ⬚/▣ wissel je per
-  kaartje tussen dat en *vullen* (kader helemaal vol, randen vallen weg). Voor de
-  achterkant zit dezelfde knop in het printvenster.
+  kaartje tussen dat en *vullen* (kader helemaal vol, randen vallen weg). Ook bij
+  *hele foto* kun je slepen en zoomen: schuif hem naar links of rechts binnen het
+  kader, of zoom in en schuif dan ook op en neer. Voor de achterkant zit
+  dezelfde knop in het printvenster.
 - **Wisselen**: pak een kaartje aan ⠿ en laat het op een ander kaartje vallen:
   foto én titel wisselen van plek. Houd ⌥ ingedrukt bij het loslaten om alleen
   de foto's te wisselen. De kleine ⠿ voor een titelveld wisselt alleen titels.

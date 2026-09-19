@@ -698,8 +698,10 @@ function wirePan(canvas, preview, target) {
     const dw = img.width * s, dh = img.height * s;
     const unit = canvas.clientWidth || 1;
     const c = card();
-    if (dw > p.w) c.focus.x = clamp(c.focus.x + (e.clientX - lastX) / unit / (p.w - dw), 0, 1);
-    if (dh > p.h) c.focus.y = clamp(c.focus.y + (e.clientY - lastY) / unit / (p.h - dh), 0, 1);
+    // Werkt in beide richtingen: bij 'vullen' is de foto groter dan het vak, bij
+    // 'hele foto' vaak smaller - dan schuif je hem binnen het vak heen en weer.
+    if (Math.abs(dw - p.w) > 1e-6) c.focus.x = clamp(c.focus.x + (e.clientX - lastX) / unit / (p.w - dw), 0, 1);
+    if (Math.abs(dh - p.h) > 1e-6) c.focus.y = clamp(c.focus.y + (e.clientY - lastY) / unit / (p.h - dh), 0, 1);
     lastX = e.clientX; lastY = e.clientY;
     target.repaint();
   });

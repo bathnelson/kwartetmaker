@@ -81,9 +81,10 @@ export function drawPhoto(ctx, img, x, y, w, h, focus, zoom, fit) {
   const s = Math.min(w / img.width, h / img.height) * (zoom || 1);
   const dw = img.width * s;
   const dh = img.height * s;
-  // Past de foto in het vak, dan in het midden; is hij ingezoomd groter, dan telt de uitsnede.
-  const fx = dw > w && focus ? focus.x : 0.5;
-  const fy = dh > h && focus ? focus.y : 0.5;
+  // focus 0..1: is de foto smaller dan het vak, dan van linker- tot rechterrand
+  // (of boven- tot onderrand); is hij groter, dan welk deel er in beeld is.
+  const fx = focus ? focus.x : 0.5;
+  const fy = focus ? focus.y : 0.5;
   ctx.drawImage(img, x + (w - dw) * fx, y + (h - dh) * fy, dw, dh);
 }
 
