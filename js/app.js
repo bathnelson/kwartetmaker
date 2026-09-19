@@ -1,6 +1,6 @@
 import * as store from './store.js';
 import { makeZip, readZip, downloadBlob } from './zip.js';
-import { drawCard, drawBack, photoRect, CARD_RATIO, EXPORT_WIDTH } from './render.js';
+import { drawCard, drawBack, photoRect, CARD_RATIO, EXPORT_WIDTH, FONT } from './render.js';
 import { makePdf } from './pdf.js';
 import { PALETTE, pickColor, isHex, inkOn, mix } from './colors.js';
 import { mergeGame, equal } from './sync.js';
@@ -924,11 +924,12 @@ async function pageJpeg(canvas) {
   return { data: new Uint8Array(await blob.arrayBuffer()), width: canvas.width, height: canvas.height };
 }
 
+const kwartetGebruikt = (q) => q.theme.trim() || q.cards.some((c) => c.title.trim() || c.photoId);
+
 function printableCards(includeEmpty) {
   const out = [];
   game.quartets.forEach((q, qi) => {
-    const used = q.theme.trim() || q.cards.some((c) => c.title.trim() || c.photoId);
-    if (!used && !includeEmpty) return;
+    if (!kwartetGebruikt(q) && !includeEmpty) return;
     q.cards.forEach((_, ci) => out.push({ q, qi, ci }));
   });
   return out;
@@ -956,7 +957,7 @@ async function makePrintSheets(options) {
       const { x, y } = cellOrigin(i % PRINT.cols, Math.floor(i / PRINT.cols));
       front.ctx.save();
       front.ctx.translate(x, y);
-      drawCard(front.ctx, cardWpx, { ...cardModel(item.q, item.qi, item.ci), hints: false }, style(item.q));
+      drawCard(front.ctx, cardWpx, { ...cardModel(item.q, item.qi, item.ci), hints: false }, { ...style(item.q), wissen: false });
       front.ctx.restore();
     });
     pages.push(await pageJpeg(front.canvas));
@@ -965,7 +966,7 @@ async function makePrintSheets(options) {
     if (options.backs) {
       const back = newPageCanvas();
       if (options.marks) drawCutMarks(back.ctx);
-      const style0 = { bg: '#ffffff', border: '#e7ebee', radius: 0 };   // kleur tot de snijlijn
+      const style0 = { bg: '#ffffff', border: '#e7ebee', radius: 0, wissen: false };   // kleur tot de snijlijn
       group.forEach((item, i) => {
         const col = PRINT.cols - 1 - (i % PRINT.cols);
         const { x, y } = cellOrigin(col, Math.floor(i / PRINT.cols));
@@ -983,6 +984,89 @@ async function makePrintSheets(options) {
   const sheets = options.backs ? pages.length / 2 : pages.length;
   toast(`${cards.length} kaartjes op ${sheets} vel${sheets === 1 ? '' : 'len'}` +
         (options.backs ? ' (met achterkanten, dubbelzijdig omslaan over de lange kant).' : '.'), 6000);
+}
+
+/* ---------------- overzicht: één kwartet per pagina ---------------- */
+// Om na te kijken, niet om te knippen: de vier kaartjes 2 x 2 zoals in de
+// editor, groter dan echt, met het kwartet erboven. Geen achterkanten.
+
+const OVERZICHT = {
+  marge: 15,                                 // mm, boven, links en rechts
+  onder: 15,                                 // mm, met daarin de paginavoet
+  kop: 20,                                   // ruimte voor nummer en thema
+  tussen: 8,                                 // tussen de kaartjes
+};
+
+async function maakOverzicht(options) {
+  const lijst = game.quartets.map((q, qi) => ({ q, qi })).filter(({ q }) => options.empty || kwartetGebruikt(q));
+  if (!lijst.length) throw new Error('Nog niets om te printen: vul eerst een kwartet.');
+
+  // Zo groot als past, in de breedte én de hoogte (komt uit op ca. 85 mm breed).
+  const kaartB = Math.min(
+    (PRINT.pageW - 2 * OVERZICHT.marge - OVERZICHT.tussen) / 2,
+    (PRINT.pageH - OVERZICHT.marge - OVERZICHT.kop - OVERZICHT.onder - OVERZICHT.tussen) / (2 * CARD_RATIO),
+  );
+  const kaartH = kaartB * CARD_RATIO;
+  const links = (PRINT.pageW - 2 * kaartB - OVERZICHT.tussen) / 2;
+  const pages = [];
+
+  for (const [n, { q, qi }] of lijst.entries()) {
+    toast(`Overzicht maken… kwartet ${n + 1} van ${lijst.length}`, 60000);
+    await ensureQuartetImages(q);
+    const { canvas, ctx } = newPageCanvas();
+
+    // kop: gekleurd blokje, nummer en thema
+    const x0 = mm(links);
+    const basis = mm(OVERZICHT.marge + 10);
+    ctx.fillStyle = q.color;
+    ctx.fillRect(x0, basis - mm(6), mm(6), mm(6));
+    ctx.textBaseline = 'alphabetic';
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#8b949c';
+    ctx.font = `600 ${mm(5)}px ${FONT}`;
+    const nummer = `Kwartet ${qi + 1}`;
+    ctx.fillText(nummer, x0 + mm(9), basis);
+    const na = x0 + mm(9) + ctx.measureText(nummer).width + mm(4);
+    ctx.fillStyle = q.color;
+    ctx.font = `700 ${mm(7)}px ${FONT}`;
+    ctx.fillText(q.theme.trim() || 'zonder thema', na, basis);
+
+    // de vier kaartjes
+    const top = OVERZICHT.marge + OVERZICHT.kop;
+    q.cards.forEach((_, ci) => {
+      const x = links + (ci % 2) * (kaartB + OVERZICHT.tussen);
+      const y = top + Math.floor(ci / 2) * (kaartH + OVERZICHT.tussen);
+      ctx.save();
+      ctx.translate(mm(x), mm(y));
+      drawCard(ctx, mm(kaartB), { ...cardModel(q, qi, ci), hints: false }, { ...style(q), wissen: false });
+      ctx.restore();
+    });
+
+    // voet
+    ctx.fillStyle = '#9aa3ab';
+    ctx.font = `400 ${mm(3.2)}px ${FONT}`;
+    ctx.fillText(game.title || 'Kwartet', x0, mm(PRINT.pageH - 8));
+    ctx.textAlign = 'right';
+    ctx.fillText(`${n + 1} / ${lijst.length}`, mm(PRINT.pageW - links), mm(PRINT.pageH - 8));
+
+    pages.push(await pageJpeg(canvas));
+    await new Promise((r) => setTimeout(r, 0));
+  }
+
+  downloadBlob(makePdf(pages), `${safeName(game.title, 'Kwartet')} - overzicht.pdf`);
+  toast(`Overzicht klaar: ${lijst.length} ${lijst.length === 1 ? 'pagina' : "pagina's"}.`, 5000);
+}
+
+function printSoort() {
+  const gekozen = document.querySelector('input[name=printSoort]:checked');
+  return gekozen ? gekozen.value : 'vellen';
+}
+
+function toonPrintSoort() {
+  const overzicht = printSoort() === 'overzicht';
+  el('#vellenOpties').classList.toggle('uit', overzicht);
+  el('#hintVellen').hidden = overzicht;
+  el('#hintOverzicht').hidden = !overzicht;
 }
 
 /* ---------------- achterkant-dialoog ---------------- */
@@ -1541,13 +1625,27 @@ async function init() {
     repaint: paintBackPreview,
     zoomInput: () => el('#backZoom'),
   });
+  // keuze onthouden (per browser)
+  try {
+    const bewaard = localStorage.getItem('kwartet-printsoort');
+    const knop = bewaard && document.querySelector(`input[name=printSoort][value="${bewaard}"]`);
+    if (knop) knop.checked = true;
+  } catch (e) { /* */ }
+  toonPrintSoort();
+  document.querySelectorAll('input[name=printSoort]').forEach((r) => r.addEventListener('change', () => {
+    toonPrintSoort();
+    try { localStorage.setItem('kwartet-printsoort', printSoort()); } catch (e) { /* */ }
+  }));
   el('#makePdf').addEventListener('click', (e) => {
     e.preventDefault();
-    makePrintSheets({
-      backs: el('#optBacks').checked,
-      marks: el('#optMarks').checked,
-      empty: el('#optEmpty').checked,
-    }).catch((err) => toast(err.message, 8000));
+    const klus = printSoort() === 'overzicht'
+      ? maakOverzicht({ empty: el('#optEmpty').checked })
+      : makePrintSheets({
+        backs: el('#optBacks').checked,
+        marks: el('#optMarks').checked,
+        empty: el('#optEmpty').checked,
+      });
+    klus.catch((err) => toast(err.message, 8000));
   });
   el('#newGame').addEventListener('click', async () => {
     if (!confirm('Alles wissen en met een leeg spel beginnen? Dit kan niet ongedaan gemaakt worden.')) return;

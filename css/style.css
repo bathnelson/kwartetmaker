@@ -341,3 +341,6 @@ body:has(.taken:not([hidden])) .editor {
 .dubbel-stip { color: #c77700; font-size: 11px; flex: 0 0 auto; }
 .cardcol.knipper .preview { animation: knipper 0.7s ease 3; }
 @keyframes knipper { 50% { box-shadow: 0 0 0 4px #f0c36d, var(--shadow); } }
+
+.print-sub { margin-left: 22px; }
+.print-sub.uit { opacity: .45; pointer-events: none; }

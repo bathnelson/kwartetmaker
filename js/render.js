@@ -111,7 +111,10 @@ export function drawCard(ctx, W, card, style) {
   const text = style.text;
   const muted = style.muted;
 
-  ctx.clearRect(0, 0, W, H);
+  // Op een eigen canvas (preview, PNG) eerst leegmaken: de hoeken buiten de
+  // ronding blijven dan doorzichtig. Op een printpagina niet (style.wissen ===
+  // false): een PDF-pagina is een JPEG, en doorzichtig wordt daar zwart.
+  if (style.wissen !== false) ctx.clearRect(0, 0, W, H);
   ctx.save();
 
   // kaartvlak
@@ -202,7 +205,10 @@ export function drawBack(ctx, W, back, style) {
   // preview met afgeronde hoeken, zoals het kaartje er straks uitziet.
   const radius = style.radius === undefined ? F.radius * W : style.radius;
 
-  ctx.clearRect(0, 0, W, H);
+  // Op een eigen canvas (preview, PNG) eerst leegmaken: de hoeken buiten de
+  // ronding blijven dan doorzichtig. Op een printpagina niet (style.wissen ===
+  // false): een PDF-pagina is een JPEG, en doorzichtig wordt daar zwart.
+  if (style.wissen !== false) ctx.clearRect(0, 0, W, H);
   ctx.save();
   if (radius > 0) {
     roundRect(ctx, 0, 0, W, H, radius);

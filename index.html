@@ -137,12 +137,19 @@
           </select>
         </label>
         <h3>Printen</h3>
-        <label class="check"><input id="optBacks" type="checkbox" checked> Achterkanten meeprinten</label>
-        <label class="check"><input id="optMarks" type="checkbox" checked> Snijlijnen in de marge</label>
+        <label class="check"><input type="radio" name="printSoort" value="vellen" checked> Printvellen om te knippen</label>
+        <label class="check"><input type="radio" name="printSoort" value="overzicht"> Overzicht: één kwartet per pagina</label>
+        <div id="vellenOpties" class="print-sub">
+          <label class="check"><input id="optBacks" type="checkbox" checked> Achterkanten meeprinten</label>
+          <label class="check"><input id="optMarks" type="checkbox" checked> Snijlijnen in de marge</label>
+        </div>
         <label class="check"><input id="optEmpty" type="checkbox"> Ook lege kwartetten</label>
-        <p class="hint">9 kaartjes per A4 (63 × 88 mm). Print dubbelzijdig met
+        <p id="hintVellen" class="hint">9 kaartjes per A4 (63 × 88 mm). Print dubbelzijdig met
           omslaan over de <strong>lange kant</strong> en zet "ware grootte" /
           100 % aan, niet "passend maken".</p>
+        <p id="hintOverzicht" class="hint" hidden>Per kwartet één A4 met de vier kaartjes
+          zoals in de editor, groter dan echt (ca. 85 mm breed) zodat je ze goed kunt
+          nakijken. Zonder achterkanten en snijlijnen; niet om te knippen.</p>
       </section>
     </div>
     <div class="dialog-actions">

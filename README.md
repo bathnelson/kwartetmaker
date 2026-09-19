@@ -281,6 +281,12 @@ met veel foto's, dan wacht de app even en probeert het opnieuw.
 Zet in het printvenster "ware grootte" of 100 % aan, niet "passend maken",
 anders kloppen de maten niet meer.
 
+Wil je alleen nakijken, kies dan in hetzelfde venster *Overzicht: één kwartet
+per pagina*. Dat geeft per kwartet een A4 met de vier kaartjes 2×2, zoals in de
+editor maar groter dan echt (ca. 85 mm breed), met nummer en thema erboven en
+zonder achterkanten of snijlijnen. Niet bedoeld om te knippen. De app onthoudt
+welke soort je het laatst koos.
+
 ## Export
 
 - *Exporteer dit kwartet* → zipbestand met één mapje, bijv.
