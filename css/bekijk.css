@@ -1,0 +1,55 @@
+/* Bekijkpagina: alleen kijken, eerst voor de telefoon. */
+:root {
+  --bg: #eef5e3;
+  --ink: #3b4147;
+  --muted: #8b949c;
+  --shadow: 0 1px 2px rgba(20,30,20,.06), 0 6px 18px rgba(20,30,20,.10);
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font: 15px/1.4 -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+[hidden] { display: none !important; }
+
+.kop, .kwartetten { max-width: 1080px; margin: 0 auto; padding-left: 16px; padding-right: 16px; }
+.kop { padding-top: max(18px, env(safe-area-inset-top)); padding-bottom: 4px; }
+.kop h1 { margin: 0; font-size: 22px; letter-spacing: .01em; }
+.info { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+
+.kwartetten { padding-bottom: 40px; }
+.kwartet { margin: 20px 0 28px; }
+.kwartet h2 {
+  display: flex; align-items: center; gap: 8px;
+  margin: 0 0 10px; font-size: 16px;
+}
+.kwartet h2 .nr { color: var(--muted); font-weight: 600; font-variant-numeric: tabular-nums; font-size: 14px; }
+.kwartet h2 .stip { width: 10px; height: 10px; border-radius: 3px; flex: 0 0 auto; }
+
+.kaarten { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+@media (min-width: 720px) { .kaarten { grid-template-columns: repeat(4, 1fr); gap: 14px; } }
+
+.kaart {
+  border: 0; padding: 0; margin: 0; background: #fff; border-radius: 10px;
+  box-shadow: var(--shadow); overflow: hidden; cursor: zoom-in; display: block; width: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+.kaart canvas { display: block; width: 100%; height: auto; }
+.achterkant .kaarten { grid-template-columns: minmax(0, 200px); }
+
+.leeg { color: var(--muted); text-align: center; padding: 60px 0; }
+
+.groot {
+  position: fixed; inset: 0; z-index: 10;
+  background: rgba(20,25,20,.78);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+  padding: 20px; cursor: zoom-out;
+}
+.groot canvas {
+  width: min(88vw, calc(80vh / 1.397), 460px); height: auto;
+  border-radius: 14px; box-shadow: 0 10px 40px rgba(0,0,0,.35); background: #fff;
+}
+.groot-hint { margin: 0; color: rgba(255,255,255,.7); font-size: 13px; }

@@ -1,0 +1,22 @@
+# Kwartetmaker op gewone webhosting (Apache / LiteSpeed).
+Options -Indexes
+
+# Bestanden die alleen bij de lokale versie horen: niet uitserveren.
+<FilesMatch "\.(py|sh|command|md)$">
+  <IfModule mod_authz_core.c>
+    Require all denied
+  </IfModule>
+  <IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+  </IfModule>
+</FilesMatch>
+
+# Na een update meteen de nieuwe versie: de browser vraagt bij html/js/css
+# steeds even na of er iets veranderd is. Is dat niet zo, dan is het antwoord
+# een kleine "304 niet gewijzigd" en gaat het net zo snel.
+<IfModule mod_headers.c>
+  <FilesMatch "\.(html|js|css)$">
+    Header set Cache-Control "no-cache"
+  </FilesMatch>
+</IfModule>

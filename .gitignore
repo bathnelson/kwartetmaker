@@ -1,0 +1,8 @@
+# Jouw wachtwoord en serverinstellingen: nooit in git.
+config.php
+# Het spel en de foto's.
+data/
+kwartet-data/
+# Lokaal
+.claude/
+.DS_Store
