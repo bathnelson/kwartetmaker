@@ -1741,6 +1741,12 @@ async function init() {
   window.addEventListener('drop', (e) => e.preventDefault());
 
   window.addEventListener('resize', () => repaintQuartet());
+  // Ook als alleen de editor smaller of breder wordt (zijbalk, takenlijst).
+  let hertekenen = 0;
+  new ResizeObserver(() => {
+    cancelAnimationFrame(hertekenen);
+    hertekenen = requestAnimationFrame(repaintQuartet);
+  }).observe(el('#editor'));
 }
 
 init().catch((err) => {

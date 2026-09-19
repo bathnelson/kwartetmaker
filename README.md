@@ -241,7 +241,9 @@ wachtwoord - anders als tekst uitserveren.
   werken (bijv. een halve iMac 21,5"). De vier kaartjes staan in een 2×2 en
   schalen mee met de hoogte van het venster, zodat ze altijd alle vier in beeld
   zijn. De zijbalk is smal; houd je muis er even op, dan klapt hij uit tot de
-  namen helemaal leesbaar zijn.
+  namen helemaal leesbaar zijn. Op een breed scherm (vanaf 1180 px) staat de
+  zijbalk altijd uitgeklapt en schuiven de kaartjes op, zodat ze in beeld
+  blijven.
 - **Thema en titels** typ je één keer; de vier titels verschijnen op alle vier
   de kaartjes van het kwartet, met de eigen titel in de themakleur.
 - **Kleur**: elk kwartet krijgt automatisch een eigen kleur uit een palet van

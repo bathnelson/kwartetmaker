@@ -84,11 +84,23 @@ main { flex: 1; display: flex; min-height: 0; position: relative; }
   width: 190px; background: var(--panel);
   border-right: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0;
 }
-.sidebar.expanded {
-  width: max-content; min-width: 190px; max-width: min(460px, 70vw);
-  box-shadow: 8px 0 28px rgba(20,30,20,.16);
+/* Smal venster (bijv. naast Photos): uitklappen als laag bij aanwijzen. */
+@media (max-width: 1179.98px) {
+  .sidebar.expanded {
+    width: max-content; min-width: 190px; max-width: min(460px, 70vw);
+    box-shadow: 8px 0 28px rgba(20,30,20,.16);
+  }
+  .sidebar.expanded .foot-links { flex-wrap: nowrap; }
 }
-.sidebar.expanded .foot-links { flex-wrap: nowrap; }
+/* Breed venster: altijd uitgeklapt, als gewone kolom - de editor schuift op. */
+@media (min-width: 1180px) {
+  .sidebar {
+    position: static; flex: 0 0 auto;
+    width: max-content; min-width: 190px; max-width: min(460px, 32vw);
+  }
+  /* Kop, teller en voet bepalen de breedte niet; alleen de namen in de lijst. */
+  .sidebar-head, .keuze-teller, .sidebar-foot { contain: inline-size; }
+}
 .sidebar-head { display: flex; align-items: baseline; justify-content: space-between; padding: 10px 12px 6px; }
 .sidebar-head h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; margin: 0; color: var(--muted); }
 .muted { color: var(--muted); font-size: 11.5px; }
@@ -112,12 +124,9 @@ main { flex: 1; display: flex; min-height: 0; position: relative; }
 /* ---------- editor ---------- */
 .editor {
   flex: 1; overflow-y: auto; padding: 14px 18px 16px; min-width: 0; margin-left: 190px;
-  /* Kaartbreedte zo gekozen dat de 2x2 altijd in beeld past: begrensd door de
-     hoogte (twee rijen kaartjes + titelvelden + kop) én door de breedte. */
-  --cardw: clamp(140px,
-                 min(calc((100vh - 232px) / 2.8), calc((100vw - 190px - 52px) / 2)),
-                 330px);
+  container-type: inline-size;          /* de kaartjes rekenen met de échte breedte hiervan */
 }
+@media (min-width: 1180px) { .editor { margin-left: 0; } }
 
 .editor-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
 .qnum { font-weight: 700; font-size: 18px; color: var(--accent); font-variant-numeric: tabular-nums; min-width: 20px; }
@@ -128,7 +137,13 @@ main { flex: 1; display: flex; min-height: 0; position: relative; }
 .theme-input:focus { outline: 2px solid color-mix(in srgb, var(--accent) 45%, white); border-color: var(--accent); }
 .editor-actions { margin-left: auto; display: flex; gap: 6px; }
 
-.cards { display: grid; grid-template-columns: repeat(2, var(--cardw)); gap: 14px 16px; }
+/* Kaartbreedte zo gekozen dat de 2x2 altijd in beeld past: begrensd door de
+   hoogte (twee rijen kaartjes + titelvelden + kop) én door de breedte die de
+   editor echt heeft (100cqw) - dus ook met een brede zijbalk of de takenlijst open. */
+.cards {
+  --cardw: clamp(130px, min(calc((100vh - 232px) / 2.8), calc((100cqw - 20px) / 2)), 330px);
+  display: grid; grid-template-columns: repeat(2, var(--cardw)); gap: 14px 16px;
+}
 
 .cardcol { display: flex; flex-direction: column; gap: 6px; }
 .preview {
@@ -314,12 +329,6 @@ main { flex: 1; display: flex; min-height: 0; position: relative; }
 .taken-naam { font-size: 11.5px; color: var(--muted); display: flex; flex-direction: column; gap: 3px; border-top: 1px solid var(--line); padding-top: 8px; }
 .taken-naam input { padding: 5px 8px; border: 1px solid var(--line); border-radius: 7px; font-size: 12.5px; color: var(--ink); }
 @media (hover: none) { .taak .weg { visibility: visible; } }
-
-body:has(.taken:not([hidden])) .editor {
-  --cardw: clamp(130px,
-                 min(calc((100vh - 232px) / 2.8), calc((100vw - 190px - 290px - 52px) / 2)),
-                 330px);
-}
 
 /* ---------- melding nieuwe versie ---------- */
 .nieuwe-versie {
