@@ -23,18 +23,20 @@ Waarom https: Safari 26 weigert `http://localhost` met *'Alleen HTTPS' is
 ingeschakeld*. Met een eigen certificaat is dat probleem weg en werkt elke
 browser.
 
-Handmatig starten kan ook:
+Handmatig starten kan ook (eerst naar je thuismap, zie hieronder):
 
 ```bash
-python3 ~/Applications/kwartetmaker/serve.py ~/Applications/kwartetmaker --cert ~/.kwartetmaker/localhost.pem --lan
+cd ~ && python3 ~/Desktop/Workspace/kwartetmaker/serve.py ~/Desktop/Workspace/kwartetmaker --cert ~/.kwartetmaker/localhost.pem --lan
 ```
 
 De app moet via de server draaien (niet door `index.html` te dubbelklikken),
 anders werkt de opslag in de browser niet.
 
-Let op: zet de map niet op je Bureaublad of in Documenten. Dat zijn door macOS
-beschermde mappen; Terminal krijgt daar geen toegang en python stopt dan met
-`Operation not permitted`. `/Applications` of je thuismap werkt prima.
+Het Bureaublad en Documenten zijn door macOS beschermde mappen. De eerste keer
+vraagt macOS of Terminal erbij mag: klik OK (of zet het aan via
+Systeeminstellingen > Privacy en beveiliging > Bestanden en mappen > Terminal).
+Python start niet vanuit zo'n map (`Operation not permitted`); `start.command`
+gaat daarom eerst naar je thuismap.
 
 ## Op een andere computer
 
@@ -73,7 +75,8 @@ Alles komt dan van de webhost: de pagina zelf én de opslag. Je hebt
 `start.command`, `serve.py` en het certificaat niet meer nodig, en Safari doet
 gewoon mee omdat Vimexx al https levert.
 
-1. Zet een wachtwoord in `config.php`:
+1. Kopieer `vimexx/config.voorbeeld.php` naar `vimexx/config.php` en zet er een
+   wachtwoord in:
 
    ```php
    'wachtwoord' => 'iets-wat-niemand-raadt',
@@ -81,20 +84,17 @@ gewoon mee omdat Vimexx al https levert.
 
    Zolang dat leeg is, weigert de server alles. Een kwartet met je eigen foto's
    hoort niet open en bloot online te staan.
-2. Zet met FTP (of het bestandsbeheer van Vimexx) deze bestanden in de webmap,
-   bijvoorbeeld `public_html/kwartet/`:
+2. Zet met FTP (of het bestandsbeheer van Vimexx) de inhoud van de map
+   `vimexx/` in de webmap, bijvoorbeeld `public_html/kwartet/`:
 
    ```
-   vimexx/index.html   ->  index.html
-   vimexx/bekijk.html  ->  bekijk.html
-   vimexx/laden.js     ->  laden.js
-   api.php
-   config.php          (kopie van config.voorbeeld.php, met jouw wachtwoord)
-   .htaccess           (verborgen bestand: in de Finder ⌘⇧. om het te zien)
+   index.html   bekijk.html   laden.js
+   api.php      config.php    .htaccess   (verborgen: ⌘⇧. in de Finder)
    ```
 
-   Meer niet: de app zelf (css en js) haalt `laden.js` van GitHub.
-   `upload.command` zet ze met de juiste namen neer.
+   `config.voorbeeld.php` hoeft niet mee. Meer is het niet: de app zelf (css en
+   js) haalt `laden.js` van GitHub, en `api.php` bewaart het spel op Vimexx.
+   `upload.command` doet dit voor je.
 3. Zorg dat de webserver in die map mag schrijven (de map `data` wordt vanzelf
    aangemaakt, rechten 755 is meestal genoeg).
 4. Open `https://jouwdomein.nl/kwartet/`. Je krijgt een inlogscherm; daarna
@@ -124,7 +124,8 @@ via het jsDelivr-CDN, met dat versienummer in het adres. Gevolg:
 - Is GitHub even onbereikbaar, dan valt `laden.js` terug op de laatste versie
   die jsDelivr kent (die kan dan een paar uur achterlopen).
 
-Alleen `api.php` draait op de server zelf en kan dus niet van GitHub komen.
+Alleen `api.php` draait op de server zelf en kan dus niet van GitHub komen
+(GitHub kan geen PHP draaien; de kopie in de repo is alleen de broncode).
 Verandert die, dan zegt de app bij het openen dat hij opnieuw geüpload moet
 worden. `config.php` staat nooit op GitHub (zie `.gitignore`); daarin staat je
 wachtwoord.
@@ -175,7 +176,7 @@ Bij Vimexx (DirectAdmin) ziet dat er zo uit:
 /home/GEBRUIKER/domains/JOUWDOMEIN.nl/kwartet-data/          <- de datamap
 ```
 
-In `config.php` zet je dan:
+In `vimexx/config.php` zet je dan:
 
 ```php
 'datamap' => __DIR__ . '/../../kwartet-data',
@@ -327,11 +328,13 @@ node tests/sync.test.mjs
 | `js/sync.js` | voegt wijzigingen van verschillende computers samen |
 | `tests/sync.test.mjs` | tests voor dat samenvoegen |
 | `bekijk.html`, `js/bekijk.js`, `css/bekijk.css` | de bekijkpagina achter de deel-link |
-| `api.php` | de server-opslag voor de gehoste versie |
-| `.htaccess` | afscherming op de webhost |
-| `config.php` | wachtwoord en datamap voor de gehoste versie (niet in git) |
-| `config.voorbeeld.php` | sjabloon voor `config.php` |
-| `vimexx/` | de drie bestanden die op Vimexx staan en de app van GitHub laden |
+| `vimexx/` | alles wat op Vimexx staat - de inhoud van deze map upload je |
+| `vimexx/index.html`, `bekijk.html`, `laden.js` | minipagina's die de app van GitHub laden |
+| `vimexx/api.php` | de server-opslag voor de gehoste versie |
+| `vimexx/.htaccess` | afscherming op de webhost |
+| `vimexx/config.php` | wachtwoord en datamap (niet in git) |
+| `vimexx/config.voorbeeld.php` | sjabloon voor `config.php` |
+| `php-router.php` | laat `start-php.command` lokaal werken zoals op de server |
 | `js/zip.js` | maakt en leest zipbestanden (export en back-up) |
 | `js/pdf.js` | zet de printvellen in een PDF |
 | `js/colors.js` | het kleurenpalet voor de thema's |

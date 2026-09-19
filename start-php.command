@@ -24,8 +24,12 @@ if [[ -z "$PHP" ]]; then
   exit 1
 fi
 
-if grep -q "'wachtwoord' => ''" "$DIR/config.php" 2>/dev/null; then
-  print -r -- "Let op: er staat nog geen wachtwoord in config.php."
+if [[ ! -f "$DIR/vimexx/config.php" ]]; then
+  print -r -- "Let op: vimexx/config.php ontbreekt. Kopieer vimexx/config.voorbeeld.php"
+  print -r -- "naar vimexx/config.php en zet er een wachtwoord in."
+  print -r -- ""
+elif grep -q "'wachtwoord' => ''" "$DIR/vimexx/config.php" 2>/dev/null; then
+  print -r -- "Let op: er staat nog geen wachtwoord in vimexx/config.php."
   print -r -- "De server weigert dan alles. Zet er eerst een in."
   print -r -- ""
 fi
@@ -42,7 +46,8 @@ done
     break }; sleep 0.25 } ) &
 
 print -r -- "Kwartetmaker (PHP-versie) op http://localhost:$PORT/"
-print -r -- "Opslag: $DIR/data"
+print -r -- "Opslag: zie 'datamap' in vimexx/config.php"
 print -r -- "Alleen deze computer; Safari weigert http, gebruik daarvoor start.command."
 print -r -- ""
-exec "$PHP" -S 127.0.0.1:$PORT -t "$DIR"
+# php-router.php: de app uit deze map, api.php uit vimexx/ (zoals op de server).
+exec "$PHP" -S 127.0.0.1:$PORT -t "$DIR" "$DIR/php-router.php"

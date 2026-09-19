@@ -35,20 +35,16 @@ if [[ -z "$WACHTWOORD" ]]; then
   exit 1
 fi
 
-# Wat gaat er mee: alleen wat op de server zelf moet staan. De app (css, js)
-# komt van GitHub, die hoef je hier nooit meer te uploaden. Links lokaal,
-# rechts de naam op de server.
+# Wat gaat er mee: de inhoud van vimexx/ - alles wat op de server zelf moet
+# staan. De app (css, js) komt van GitHub, die hoef je hier nooit te uploaden.
 #
 # config.php bewust niet: daarin staan jouw wachtwoord en serverinstellingen.
 # Start met ./upload.command --config om hem toch één keer mee te sturen.
-PAREN=(
-  "vimexx/index.html:index.html"
-  "vimexx/bekijk.html:bekijk.html"
-  "vimexx/laden.js:laden.js"
-  "api.php:api.php"
-  ".htaccess:.htaccess"
-)
-[[ "${1:-}" == --config ]] && PAREN+=("config.php:config.php")
+PAREN=()
+for f in index.html bekijk.html laden.js api.php .htaccess; do
+  PAREN+=("vimexx/$f:$f")
+done
+[[ "${1:-}" == --config ]] && PAREN+=("vimexx/config.php:config.php")
 
 print -r -- "Naar: ftps://$HOST/$MAP/  (gebruiker $GEBRUIKER)"
 print -r -- "Bestanden:"

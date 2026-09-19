@@ -47,7 +47,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         # api.php en config.php als platte tekst uitserveren - met wachtwoord
         # en al - aan iedereen in het netwerk.
         pad = self.path.split("?")[0].lower()
-        if pad.endswith(".php") or pad.startswith("/data/") or pad == "/data":
+        if (pad.endswith(".php") or pad.startswith(("/data/", "/vimexx/"))
+                or pad in ("/data", "/vimexx")):
             self.send_error(404, "Not found")
             return None
         return super().send_head()
