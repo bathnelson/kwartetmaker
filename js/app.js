@@ -303,6 +303,49 @@ function repaintQuartet() {
   });
 }
 
+/* ---------------- ja / misschien / nee ---------------- */
+// Er kunnen er uiteindelijk maar 15 besteld worden: per kwartet een keuze.
+
+const MAX_BESTELLEN = 15;
+const KEUZES = {
+  ja: { teken: '✓', tekst: 'ja' },
+  misschien: { teken: '?', tekst: 'misschien' },
+  nee: { teken: '✗', tekst: 'nee' },
+};
+const KEUZE_VOLGORDE = [undefined, 'ja', 'misschien', 'nee'];
+
+function zetKeuze(q, keuze) {
+  if (keuze) q.keuze = keuze; else delete q.keuze;
+  renderSidebar();
+  if (game.quartets[current] === q) toonKeuzeInEditor(q);
+  save();
+}
+
+function toonKeuzeInEditor(q) {
+  document.querySelectorAll('.keuze-knoppen button').forEach((b) => {
+    b.setAttribute('aria-pressed', String(b.dataset.keuze === q.keuze));
+  });
+  const kaarten = el('.cards');
+  if (kaarten) kaarten.classList.toggle('nee', q.keuze === 'nee');
+}
+
+function renderKeuzeTeller() {
+  const tel = { ja: 0, misschien: 0, nee: 0 };
+  for (const q of game.quartets) if (tel[q.keuze] !== undefined) tel[q.keuze]++;
+  const teller = el('#keuzeTeller');
+  if (!tel.ja && !tel.misschien && !tel.nee) {
+    teller.innerHTML = '<span class="muted">Klik op ○ om ja, misschien of nee te kiezen</span>';
+    return;
+  }
+  const teVeel = tel.ja - MAX_BESTELLEN;
+  teller.innerHTML = `<span class="k-ja-tekst${teVeel > 0 ? ' te-veel' : ''}">✓ ${tel.ja}/${MAX_BESTELLEN}</span>
+    <span class="k-misschien-tekst">? ${tel.misschien}</span>
+    <span class="k-nee-tekst">✗ ${tel.nee}</span>`;
+  teller.title = teVeel > 0
+    ? `${teVeel} kwartet${teVeel === 1 ? '' : 'ten'} te veel op ja: er kunnen er ${MAX_BESTELLEN} besteld worden`
+    : `${tel.ja} op ja van de ${MAX_BESTELLEN} die besteld kunnen worden`;
+}
+
 /* ---------------- sidebar ---------------- */
 
 // Bij aanwijzen klapt de zijbalk uit tot de namen helemaal passen. Pas na even
@@ -342,8 +385,11 @@ function renderSidebar() {
   lijstVolgorde().forEach((i) => {
     const q = game.quartets[i];
     const li = document.createElement('li');
-    li.className = i === current ? 'active' : '';
-    li.innerHTML = `<span class="num">${i + 1}</span>
+    li.className = [i === current ? 'active' : '', q.keuze === 'nee' ? 'nee' : ''].join(' ').trim();
+    const k = KEUZES[q.keuze];
+    li.innerHTML = `<button class="keuze k-${q.keuze || 'leeg'}" type="button"
+        title="${k ? `Gekozen: ${k.tekst}. ` : ''}Klik om te wisselen: ja, misschien, nee">${k ? k.teken : '○'}</button>
+      <span class="num">${i + 1}</span>
       <span class="swatch" style="background:${q.color}"></span>
       <span class="name ${q.theme.trim() ? '' : 'empty'}">${escapeHtml(q.theme.trim() || 'zonder thema')}</span>
       ${q.cards.some((_, ci) => dubbel.has(`${i}:${ci}`)) ? '<span class="dubbel-stip" title="Hier staat een foto die ook elders gebruikt wordt">⚠</span>' : ''}
@@ -352,8 +398,14 @@ function renderSidebar() {
     const titels = q.cards.map((c) => c.title.trim()).filter(Boolean);
     li.title = [q.theme.trim() || 'zonder thema', ...titels].join('\n');
     li.addEventListener('click', () => select(i));
+    li.querySelector('.keuze').addEventListener('click', (e) => {
+      e.stopPropagation();                         // niet ook het kwartet openen
+      const nu = KEUZE_VOLGORDE.indexOf(q.keuze);
+      zetKeuze(q, KEUZE_VOLGORDE[(nu + 1) % KEUZE_VOLGORDE.length]);
+    });
     list.appendChild(li);
   });
+  renderKeuzeTeller();
   const done = game.quartets.filter((q) => cardsDone(q) === 4).length;
   el('#progress').textContent = `${done}/${game.quartets.length}`;
   el('#progress').title = `${done} van de ${game.quartets.length} kwartetten compleet (vier foto's en titels)`;
@@ -394,6 +446,11 @@ function renderEditor() {
       <div class="theme-color">
         <input id="themeColor" type="color" title="Kleur van dit kwartet">
         <button id="autoColor" class="btn link" title="Kies automatisch een kleur die nog niet in gebruik is">automatisch</button>
+      </div>
+      <div class="keuze-knoppen" role="group" aria-label="Bestellen?">
+        <button type="button" class="k-ja" data-keuze="ja" title="Ja, dit kwartet bestellen">✓</button>
+        <button type="button" class="k-misschien" data-keuze="misschien" title="Misschien">?</button>
+        <button type="button" class="k-nee" data-keuze="nee" title="Nee, niet bestellen">✗</button>
       </div>
       <div class="editor-actions">
         <button id="exportQuartet" class="btn" title="Exporteer de vier kaartjes als mapje (zip)">Exporteer</button>
@@ -447,6 +504,11 @@ function renderEditor() {
   el('#autoColor').addEventListener('click', () => {
     applyColor(pickColor(game.quartets.filter((x) => x !== q).map((x) => x.color)));
   });
+
+  document.querySelectorAll('.keuze-knoppen button').forEach((b) => b.addEventListener('click', () => {
+    zetKeuze(q, q.keuze === b.dataset.keuze ? undefined : b.dataset.keuze);   // nog eens klikken = wissen
+  }));
+  toonKeuzeInEditor(q);
 
   el('#exportQuartet').addEventListener('click', () => exportQuartet(current));
   el('#deleteQuartet').addEventListener('click', () => deleteQuartet(current));
@@ -926,17 +988,18 @@ async function pageJpeg(canvas) {
 
 const kwartetGebruikt = (q) => q.theme.trim() || q.cards.some((c) => c.title.trim() || c.photoId);
 
-function printableCards(includeEmpty) {
+function printableCards(includeEmpty, neeOverslaan) {
   const out = [];
   game.quartets.forEach((q, qi) => {
     if (!kwartetGebruikt(q) && !includeEmpty) return;
+    if (neeOverslaan && q.keuze === 'nee') return;
     q.cards.forEach((_, ci) => out.push({ q, qi, ci }));
   });
   return out;
 }
 
 async function makePrintSheets(options) {
-  const cards = printableCards(options.empty);
+  const cards = printableCards(options.empty, options.neeOverslaan);
   if (!cards.length) throw new Error('Nog niets om te printen: vul eerst een kwartet.');
 
   for (const q of new Set(cards.map((c) => c.q))) await ensureQuartetImages(q);
@@ -998,7 +1061,8 @@ const OVERZICHT = {
 };
 
 async function maakOverzicht(options) {
-  const lijst = game.quartets.map((q, qi) => ({ q, qi })).filter(({ q }) => options.empty || kwartetGebruikt(q));
+  const lijst = game.quartets.map((q, qi) => ({ q, qi }))
+    .filter(({ q }) => (options.empty || kwartetGebruikt(q)) && !(options.neeOverslaan && q.keuze === 'nee'));
   if (!lijst.length) throw new Error('Nog niets om te printen: vul eerst een kwartet.');
 
   // Zo groot als past, in de breedte én de hoogte (komt uit op ca. 85 mm breed).
@@ -1432,6 +1496,7 @@ function normalizeGame(raw) {
       cards: Array.from({ length: 4 }, (_, i) => ({ ...newCard(), ...(q && q.cards && q.cards[i]) })),
     })),
   };
+  for (const q of out.quartets) if (q.keuze !== undefined && !KEUZES[q.keuze]) delete q.keuze;
   if (!out.quartets.length) out.quartets = newGame().quartets;
   // kwartetten zonder kleur (oud bestand, of nieuw spel) krijgen er automatisch een
   out.quartets.forEach((q, i) => {
@@ -1638,12 +1703,14 @@ async function init() {
   }));
   el('#makePdf').addEventListener('click', (e) => {
     e.preventDefault();
+    const neeOverslaan = el('#optNee').checked;
     const klus = printSoort() === 'overzicht'
-      ? maakOverzicht({ empty: el('#optEmpty').checked })
+      ? maakOverzicht({ empty: el('#optEmpty').checked, neeOverslaan })
       : makePrintSheets({
         backs: el('#optBacks').checked,
         marks: el('#optMarks').checked,
         empty: el('#optEmpty').checked,
+        neeOverslaan,
       });
     klus.catch((err) => toast(err.message, 8000));
   });

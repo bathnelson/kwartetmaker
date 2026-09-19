@@ -223,6 +223,13 @@ wachtwoord - anders als tekst uitserveren.
   wat erop staat, niet aan het bestand: ook als hij verkleind of als ander
   bestand is opgeslagen, of door iemand anders vanaf een andere computer is
   geplaatst. Het is een waarschuwing; je mag een foto gewoon twee keer gebruiken.
+- **Bestellen: ja, misschien of nee**: er kunnen er 15 besteld worden. Klik in
+  de zijbalk op ○ voor elk kwartet om te wisselen tussen ✓ (ja), ? (misschien)
+  en ✗ (nee), of gebruik de drie knoppen naast de kleur in de editor (nog eens
+  klikken wist de keuze). Kwartetten met ✗ worden gedimd. Boven de lijst staat
+  hoeveel er op ✓ staan van de 15; zijn het er meer, dan kleurt de teller rood.
+  Bij printen worden kwartetten met ✗ standaard overgeslagen (uit te zetten in
+  het printvenster).
 - **Zoeken**: A–Z boven de lijst sorteert de kwartetten op naam. Alleen de lijst:
   de nummers op de kaartjes blijven gelijk, zodat geprinte kaartjes kloppen.
 - **Takenlijst**: *Taken* bovenin toont of verbergt een lijst voor dingen die

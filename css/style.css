@@ -344,3 +344,38 @@ body:has(.taken:not([hidden])) .editor {
 
 .print-sub { margin-left: 22px; }
 .print-sub.uit { opacity: .45; pointer-events: none; }
+
+/* ---------- ja / misschien / nee ---------- */
+:root { --ja: #2e9e44; --misschien: #d98200; --nee: #d0392b; }
+.k-ja-tekst { color: var(--ja); font-weight: 700; }
+.k-misschien-tekst { color: var(--misschien); font-weight: 700; }
+.k-nee-tekst { color: var(--nee); font-weight: 700; }
+.keuze-teller { display: flex; gap: 10px; padding: 0 14px 6px 12px; font-size: 11.5px; }
+.keuze-teller .muted { font-size: 11px; }
+.keuze-teller .te-veel { color: #fff; background: var(--nee); border-radius: 5px; padding: 0 5px; }
+
+.quartet-list .keuze {
+  flex: 0 0 18px; width: 18px; height: 18px; border: 0; background: none; padding: 0; cursor: pointer;
+  font-size: 13px; font-weight: 800; line-height: 18px; text-align: center; border-radius: 5px;
+}
+.quartet-list .keuze:hover { background: #eef1f3; }
+.quartet-list .keuze.k-leeg { color: #cfd6db; font-weight: 400; }
+.quartet-list .keuze.k-ja { color: var(--ja); }
+.quartet-list .keuze.k-misschien { color: var(--misschien); }
+.quartet-list .keuze.k-nee { color: var(--nee); }
+.quartet-list .num { width: 14px; }
+/* Nee: alles gedimd, behalve het kruisje zelf (dan zie je nog wat je koos). */
+.quartet-list li.nee > :not(.keuze) { opacity: .35; }
+.quartet-list li.nee .name { text-decoration: line-through; }
+
+.keuze-knoppen { display: flex; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
+.keuze-knoppen button {
+  border: 0; background: #fff; width: 32px; height: 32px; cursor: pointer; font-size: 15px; font-weight: 800; color: #b9c0c6;
+}
+.keuze-knoppen button + button { border-left: 1px solid var(--line); }
+.keuze-knoppen button:hover { background: #f4f7f8; }
+.keuze-knoppen .k-ja[aria-pressed="true"] { background: var(--ja); color: #fff; }
+.keuze-knoppen .k-misschien[aria-pressed="true"] { background: var(--misschien); color: #fff; }
+.keuze-knoppen .k-nee[aria-pressed="true"] { background: var(--nee); color: #fff; }
+.cards.nee { opacity: .4; filter: grayscale(.6); transition: opacity .15s; }
+.cards.nee:hover { opacity: .75; }
