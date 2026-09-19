@@ -4,7 +4,6 @@ import { drawCard, drawBack, photoRect, CARD_RATIO, EXPORT_WIDTH } from './rende
 import { makePdf } from './pdf.js';
 import { PALETTE, pickColor, isHex, inkOn, mix } from './colors.js';
 import { mergeGame, equal } from './sync.js';
-import { vingerafdruk, zoekDubbel, beschrijfPlek } from './dubbel.js';
 
 const DEFAULT_QUARTETS = 15;
 const MAX_PHOTO_SIDE = 1800;
@@ -20,7 +19,7 @@ const images = new Map();   // photoId -> ImageBitmap | HTMLImageElement
 /* ---------------- model ---------------- */
 
 function newCard() {
-  return { id: uid(), title: '', photoId: null, focus: { x: .5, y: .5 }, zoom: 1, fit: 'vullen' };
+  return { id: uid(), title: '', photoId: null, focus: { x: .5, y: .5 }, zoom: 1 };
 }
 function newQuartet(color) {
   return { id: uid(), theme: '', color: color || PALETTE[0], cards: [newCard(), newCard(), newCard(), newCard()] };
@@ -28,8 +27,7 @@ function newQuartet(color) {
 function newGame(n = DEFAULT_QUARTETS) {
   return {
     title: 'Mijn kwartet',
-    back: { color: '#2f4858', title: '', pattern: 'stippen', photoId: null, focus: { x: .5, y: .5 }, zoom: 1, fit: 'vullen' },
-    todos: [],
+    back: { color: '#2f4858', title: '', pattern: 'stippen', photoId: null, focus: { x: .5, y: .5 }, zoom: 1 },
     quartets: Array.from({ length: n }, (_, i) => newQuartet(PALETTE[i % PALETTE.length])),
   };
 }
@@ -45,7 +43,7 @@ function backStyle() {
   return {
     color: b.color, title: b.title || game.title, pattern: b.pattern,
     image: b.photoId ? images.get(b.photoId) : null,
-    focus: b.focus, zoom: b.zoom, fit: b.fit,
+    focus: b.focus, zoom: b.zoom,
     ink: inkOn(b.color), soft: mix(b.color, inkOn(b.color), 0.16),
   };
 }
@@ -155,9 +153,7 @@ function applyGame(next) {
   if (q) document.documentElement.style.setProperty('--accent', q.color);
   renderSidebar();
   renderEditor();
-  renderTaken();
   restoreFocus(focus);
-  vulVingerafdrukken();
   ensureQuartetImages(q).then(() => { if (game.quartets[current] === q) repaintQuartet(); });
   if (el('#printDialog').open) {
     if (document.activeElement !== el('#backTitle')) el('#backTitle').value = game.back.title;
@@ -269,7 +265,6 @@ function cardModel(q, qi, ci) {
     image: c.photoId ? images.get(c.photoId) : null,
     focus: c.focus,
     zoom: c.zoom,
-    fit: c.fit,
   };
 }
 
@@ -285,21 +280,10 @@ function paint(canvas, q, qi, ci) {
 function repaintQuartet() {
   const q = game.quartets[current];
   if (!q) return;
-  const dubbel = zoekDubbel(game);
   document.querySelectorAll('.cardcol').forEach((col) => {
-    const ook = dubbel.get(`${current}:${col.dataset.i}`);
-    const label = col.querySelector('.dubbel-label');
-    label.hidden = !ook;
-    if (ook) {
-      label.title = 'Deze foto staat ook op ' + ook.map((p) => beschrijfPlek(game, p)).join(', ')
-        + '. Klik om ernaartoe te gaan.';
-      label.onclick = () => gaNaarPlek(ook[0]);
-    }
     const ci = Number(col.dataset.i);
     paint(col.querySelector('canvas'), q, current, ci);
-    const c = q.cards[ci];
-    col.querySelector('.preview').classList.toggle('has-photo', !!c.photoId);
-    col.querySelector('.preview').classList.toggle('has-content', !!(c.photoId || c.title.trim()));
+    col.querySelector('.preview').classList.toggle('has-photo', !!q.cards[ci].photoId);
   });
 }
 
@@ -317,36 +301,15 @@ function wireSidebarHover() {
   window.addEventListener('dragenter', close);      // nooit uitgeklapt tijdens slepen
 }
 
-// A-Z sorteert alleen de lijst, niet het spel: het nummer staat óp de kaartjes,
-// en geprinte kaartjes moeten blijven kloppen.
-let sorteerAZ = false;
-try { sorteerAZ = localStorage.getItem('kwartet-sortering') === 'az'; } catch (e) { /* */ }
-
-function lijstVolgorde() {
-  const idx = game.quartets.map((_, i) => i);
-  if (!sorteerAZ) return idx;
-  const naam = (i) => game.quartets[i].theme.trim();
-  return idx.sort((a, b) => {
-    if (!naam(a) !== !naam(b)) return naam(a) ? -1 : 1;          // zonder thema achteraan
-    return naam(a).localeCompare(naam(b), 'nl', { sensitivity: 'base', numeric: true }) || a - b;
-  });
-}
-
 function renderSidebar() {
   const list = el('#quartetList');
   list.innerHTML = '';
-  const dubbel = zoekDubbel(game);
-  const knop = el('#sorteer');
-  knop.setAttribute('aria-pressed', String(sorteerAZ));
-  knop.title = sorteerAZ ? 'Gesorteerd op naam. Klik voor de volgorde van de nummers.' : 'Sorteer de lijst op naam (de nummers op de kaartjes blijven gelijk)';
-  lijstVolgorde().forEach((i) => {
-    const q = game.quartets[i];
+  game.quartets.forEach((q, i) => {
     const li = document.createElement('li');
     li.className = i === current ? 'active' : '';
     li.innerHTML = `<span class="num">${i + 1}</span>
       <span class="swatch" style="background:${q.color}"></span>
       <span class="name ${q.theme.trim() ? '' : 'empty'}">${escapeHtml(q.theme.trim() || 'zonder thema')}</span>
-      ${q.cards.some((_, ci) => dubbel.has(`${i}:${ci}`)) ? '<span class="dubbel-stip" title="Hier staat een foto die ook elders gebruikt wordt">⚠</span>' : ''}
       <span class="dots">${q.cards.map((c) => `<i class="${c.photoId ? 'on' : ''}" style="${c.photoId ? `background:${q.color}` : ''}"></i>`).join('')}</span>`;
     if (i === current) li.style.background = mix(q.color, '#ffffff', 0.88);
     const titels = q.cards.map((c) => c.title.trim()).filter(Boolean);
@@ -355,8 +318,7 @@ function renderSidebar() {
     list.appendChild(li);
   });
   const done = game.quartets.filter((q) => cardsDone(q) === 4).length;
-  el('#progress').textContent = `${done}/${game.quartets.length}`;
-  el('#progress').title = `${done} van de ${game.quartets.length} kwartetten compleet (vier foto's en titels)`;
+  el('#progress').textContent = `${done}/${game.quartets.length} klaar`;
 }
 
 function escapeHtml(s) {
@@ -370,7 +332,6 @@ function select(i) {
   if (q) document.documentElement.style.setProperty('--accent', q.color);
   renderSidebar();
   renderEditor();
-  renderTaken();
   // Bij opslag op de server komen de foto's per kwartet binnen; even bijtekenen.
   ensureQuartetImages(q).then(() => { if (game.quartets[current] === q) repaintQuartet(); });
 }
@@ -404,23 +365,14 @@ function renderEditor() {
       ${q.cards.map((c, i) => `
         <div class="cardcol" data-i="${i}">
           <div class="preview">
-            <button class="dubbel-label" type="button" hidden>⚠ dubbel</button>
             <canvas title="Sleep een foto hierheen of klik om er een te kiezen. Met foto: slepen verschuift, scrollen zoomt."></canvas>
             <div class="photo-tools">
-              <span class="icon grip" draggable="true" data-act="grip"
-                    title="Sleep naar een ander kaartje om ze te wisselen (houd ⌥ ingedrukt voor alleen de foto)">⠿</span>
-              <span class="spring"></span>
               <button class="icon" data-act="pick" title="Foto kiezen">🖼</button>
-              <button class="icon fit" data-act="fit"></button>
+              <input class="zoom" type="range" min="1" max="3" step="0.01" title="Inzoomen">
               <button class="icon" data-act="clear" title="Foto verwijderen">✕</button>
-              <button class="icon" data-act="empty" title="Kaartje leegmaken (foto en titel)">🗑</button>
-              <input class="zoom" type="range" min="1" max="3" step="0.01" title="Inzoomen (of scroll op de foto)">
             </div>
           </div>
-          <div class="titelrij">
-            <span class="grip-titel" draggable="true" title="Sleep naar een andere titel om ze te wisselen">⠿</span>
-            <input class="title" type="text" placeholder="Titel ${i + 1}" autocomplete="off">
-          </div>
+          <input class="title" type="text" placeholder="Titel ${i + 1}" autocomplete="off">
         </div>`).join('')}
     </div>`;
 
@@ -484,71 +436,13 @@ function renderEditor() {
       card.photoId = null;
       card.focus = { x: .5, y: .5 };
       card.zoom = 1;
-      card.fit = 'vullen';
-      delete card.fotoHash;
       zoom.value = 1;
       repaintQuartet();
       renderSidebar();
       save();
     });
 
-    wireDrop(preview,
-      (files) => { lastFocusedCard = ci; return placeFiles(ci, files); },
-      (van, alleenFoto) => wisselKaartjes(van, ci, alleenFoto));
-
-    // kaartje oppakken aan de greep
-    const grip = col.querySelector('[data-act=grip]');
-    grip.addEventListener('dragstart', (e) => {
-      e.dataTransfer.setData(KAART_TYPE, String(ci));
-      e.dataTransfer.effectAllowed = 'move';
-      e.dataTransfer.setDragImage(canvas, canvas.clientWidth / 2, 30);
-      col.classList.add('bron');
-    });
-    grip.addEventListener('dragend', () => col.classList.remove('bron'));
-
-    // titels los wisselen
-    const titelrij = col.querySelector('.titelrij');
-    const titelGrip = col.querySelector('.grip-titel');
-    titelGrip.addEventListener('dragstart', (e) => {
-      e.dataTransfer.setData(TITEL_TYPE, String(ci));
-      e.dataTransfer.effectAllowed = 'move';
-      e.dataTransfer.setDragImage(titelrij, 20, 16);
-      titelrij.classList.add('bron');
-    });
-    titelGrip.addEventListener('dragend', () => titelrij.classList.remove('bron'));
-    let titelDiepte = 0;
-    const isTitel = (e) => e.dataTransfer.types.includes(TITEL_TYPE);
-    titelrij.addEventListener('dragenter', (e) => { if (!isTitel(e)) return; e.preventDefault(); titelDiepte++; titelrij.classList.add('over'); });
-    titelrij.addEventListener('dragover', (e) => { if (!isTitel(e)) return; e.preventDefault(); e.dataTransfer.dropEffect = 'move'; });
-    titelrij.addEventListener('dragleave', () => { if (--titelDiepte <= 0) { titelDiepte = 0; titelrij.classList.remove('over'); } });
-    titelrij.addEventListener('drop', (e) => {
-      if (!isTitel(e)) return;
-      e.preventDefault();
-      titelDiepte = 0;
-      titelrij.classList.remove('over');
-      wisselTitels(Number(e.dataTransfer.getData(TITEL_TYPE)), ci);
-    });
-
-    col.querySelector('[data-act=empty]').addEventListener('click', () => maakLeeg(ci));
-
-    const fitKnop = col.querySelector('[data-act=fit]');
-    const toonFit = () => {
-      const passend = card.fit === 'passend';
-      fitKnop.textContent = passend ? '▣' : '⬚';
-      fitKnop.title = passend ? 'Nu: hele foto met vervaagde randen. Klik om het kader te vullen.'
-                              : 'Nu: kader gevuld. Klik om de hele foto te tonen (met vervaagde randen).';
-      fitKnop.setAttribute('aria-pressed', String(passend));
-    };
-    toonFit();
-    fitKnop.addEventListener('click', () => {
-      card.fit = card.fit === 'passend' ? 'vullen' : 'passend';
-      card.zoom = 1;
-      card.focus = { x: .5, y: .5 };
-      zoom.value = 1;
-      toonFit();
-      paint(canvas, q, current, ci);
-      save();
-    });
+    wireDrop(preview, (files) => { lastFocusedCard = ci; return placeFiles(ci, files); });
     wirePan(canvas, preview, {
       model: () => game.quartets[current].cards[ci],
       rect: () => photoRect(1),
@@ -558,118 +452,6 @@ function renderEditor() {
   });
 
   repaintQuartet();
-}
-
-/* ---------------- kaartjes wisselen en leegmaken ---------------- */
-
-const FOTO_VELDEN = ['photoId', 'focus', 'zoom', 'fit', 'fotoHash'];
-
-function wisselKaartjes(a, b, alleenFoto) {
-  if (a === b || Number.isNaN(a)) return;
-  const q = game.quartets[current];
-  const velden = alleenFoto ? FOTO_VELDEN : [...FOTO_VELDEN, 'title'];
-  for (const k of velden) [q.cards[a][k], q.cards[b][k]] = [q.cards[b][k], q.cards[a][k]];
-  renderEditor();
-  renderSidebar();
-  save();
-  toast(alleenFoto ? `Foto's van kaartje ${a + 1} en ${b + 1} gewisseld.` : `Kaartje ${a + 1} en ${b + 1} gewisseld.`);
-}
-
-function wisselTitels(a, b) {
-  if (a === b || Number.isNaN(a)) return;
-  const q = game.quartets[current];
-  [q.cards[a].title, q.cards[b].title] = [q.cards[b].title, q.cards[a].title];
-  renderEditor();
-  renderSidebar();
-  save();
-  toast(`Titels ${a + 1} en ${b + 1} gewisseld.`);
-}
-
-function maakLeeg(ci) {
-  const q = game.quartets[current];
-  const card = q.cards[ci];
-  if (!card.photoId && !card.title.trim()) return;
-  const vorige = { title: card.title, photoId: card.photoId, focus: { ...card.focus }, zoom: card.zoom, fit: card.fit, fotoHash: card.fotoHash };
-  // De foto zelf blijft nog even bewaard, zodat "ongedaan maken" kan; ongebruikte
-  // foto's worden later opgeruimd (lokaal bij het opstarten, op de server na een dag).
-  Object.assign(card, { title: '', photoId: null, focus: { x: .5, y: .5 }, zoom: 1, fit: 'vullen' });
-  delete card.fotoHash;
-  renderEditor();
-  renderSidebar();
-  save();
-  toast(`Kaartje ${ci + 1} leeggemaakt.`, 7000, {
-    tekst: 'Ongedaan maken',
-    doe: () => {
-      // Opzoeken via id: het spel kan intussen door een andere computer zijn bijgewerkt.
-      const qq = game.quartets.find((x) => x.id === q.id);
-      if (!qq) return;
-      Object.assign(qq.cards[ci], vorige);
-      if (game.quartets[current] === qq) renderEditor();
-      ensureQuartetImages(qq).then(repaintQuartet);
-      renderSidebar();
-      save();
-    },
-  });
-}
-
-/* ---------------- dubbele foto's ---------------- */
-// Herkend aan wat er op de foto staat (dubbel.js), dus ook als dezelfde foto
-// vanaf een andere computer of als ander bestand is geplaatst.
-
-function gaNaarPlek(plek) {
-  if (plek.achter) { openPrintDialog(); return; }
-  select(plek.qi);
-  const col = document.querySelector(`.cardcol[data-i="${plek.ci}"]`);
-  if (col) {
-    col.classList.remove('knipper');
-    void col.offsetWidth;                          // animatie opnieuw starten
-    col.classList.add('knipper');
-  }
-}
-
-function meldDubbel(kaartjes) {
-  const dubbel = zoekDubbel(game);
-  const ci = kaartjes.find((i) => dubbel.has(`${current}:${i}`));
-  if (ci === undefined) return;
-  const ander = dubbel.get(`${current}:${ci}`)[0];
-  toast(`Let op: de foto op kaartje ${ci + 1} staat ook op ${beschrijfPlek(game, ander)}.`, 9000,
-        { tekst: 'Toon', doe: () => gaNaarPlek(ander) });
-}
-
-// Foto's zonder vingerafdruk (van vóór deze functie, of van een oudere versie)
-// krijgen er alsnog een. Rustig één voor één, zodat de host niet gaat afremmen,
-// en zonder alle foto's in het geheugen te houden.
-let vingerafdrukkenBezig = false;
-async function vulVingerafdrukken() {
-  if (vingerafdrukkenBezig) return;
-  vingerafdrukkenBezig = true;
-  try {
-    const ids = new Set();
-    for (const q of game.quartets) for (const c of q.cards) if (c.photoId && !c.fotoHash) ids.add(c.photoId);
-    if (game.back.photoId && !game.back.fotoHash) ids.add(game.back.photoId);
-    let gedaan = 0;
-    for (const id of ids) {
-      let img = images.get(id);
-      let tijdelijk = null;
-      if (!img) {
-        try {
-          const blob = await store.getPhoto(id);
-          if (blob) img = tijdelijk = await createImageBitmap(blob);
-        } catch (e) { /* overslaan */ }
-      }
-      if (!img) continue;
-      const vd = vingerafdruk(img);
-      if (tijdelijk && tijdelijk.close) tijdelijk.close();
-      // Opzoeken in het actuele spel: dat kan intussen door een ander zijn bijgewerkt.
-      for (const q of game.quartets) for (const c of q.cards) if (c.photoId === id && !c.fotoHash) c.fotoHash = vd;
-      if (game.back.photoId === id && !game.back.fotoHash) game.back.fotoHash = vd;
-      gedaan++;
-      if (tijdelijk && store.opServer) await new Promise((r) => setTimeout(r, 250));
-    }
-    if (gedaan) { save(); renderSidebar(); repaintQuartet(); }
-  } finally {
-    vingerafdrukkenBezig = false;
-  }
 }
 
 /* ---------------- foto's plaatsen ---------------- */
@@ -682,7 +464,6 @@ function pickFiles(ci) {
 }
 
 async function placeFiles(startIndex, files) {
-  const geplaatst = [];
   const q = game.quartets[current];
   const list = [...files].filter((f) => f.type.startsWith('image/') || /\.(heic|heif)$/i.test(f.name));
   if (!list.length) { toast('Geen afbeelding gevonden in wat je sleepte.'); return; }
@@ -696,12 +477,6 @@ async function placeFiles(startIndex, files) {
       card.photoId = id;
       card.focus = { x: .5, y: .5 };
       card.zoom = 1;
-      // Het fotovak is liggend; van een staande foto zou bij 'vullen' het
-      // grootste deel wegvallen. Dan standaard de hele foto met vervaagde randen.
-      const img = images.get(id);
-      card.fit = img && img.height > img.width * 1.05 ? 'passend' : 'vullen';
-      if (img) card.fotoHash = vingerafdruk(img); else delete card.fotoHash;
-      geplaatst.push(i);
     } catch (err) {
       toast(`Kon "${file.name}" niet lezen. HEIC werkt in Safari; zet het anders om naar JPEG.`);
     }
@@ -710,38 +485,18 @@ async function placeFiles(startIndex, files) {
   renderEditor();
   renderSidebar();
   save();
-  meldDubbel(geplaatst);
 }
 
-const KAART_TYPE = 'application/x-kwartet-kaart';
-const TITEL_TYPE = 'application/x-kwartet-titel';
-
-// onKaart (optioneel): er wordt een ander kaartje uit de app op gesleept.
-function wireDrop(preview, onFiles, onKaart) {
+function wireDrop(preview, onFiles) {
   let depth = 0;
-  const intern = (e) => onKaart && e.dataTransfer.types.includes(KAART_TYPE);
-  const alleenTitel = (e) => e.dataTransfer.types.includes(TITEL_TYPE);
-  preview.addEventListener('dragenter', (e) => {
-    if (alleenTitel(e)) return;
-    e.preventDefault();
-    depth++;
-    preview.classList.add(intern(e) ? 'over-wissel' : 'over');
-  });
-  preview.addEventListener('dragover', (e) => {
-    if (alleenTitel(e)) return;
-    e.preventDefault();
-    e.dataTransfer.dropEffect = intern(e) ? 'move' : 'copy';
-  });
-  preview.addEventListener('dragleave', () => {
-    if (--depth <= 0) { depth = 0; preview.classList.remove('over', 'over-wissel'); }
-  });
+  preview.addEventListener('dragenter', (e) => { e.preventDefault(); depth++; preview.classList.add('over'); });
+  preview.addEventListener('dragover', (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; });
+  preview.addEventListener('dragleave', () => { if (--depth <= 0) { depth = 0; preview.classList.remove('over'); } });
   preview.addEventListener('drop', async (e) => {
-    if (alleenTitel(e)) return;
     e.preventDefault();
     depth = 0;
-    preview.classList.remove('over', 'over-wissel');
+    preview.classList.remove('over');
     const dt = e.dataTransfer;
-    if (intern(e)) { onKaart(Number(dt.getData(KAART_TYPE)), e.altKey); return; }
     if (dt.files && dt.files.length) { await onFiles(dt.files); return; }
     const uri = (dt.getData('text/uri-list') || dt.getData('text/plain') || '').split('\n')[0].trim();
     if (/^https?:/.test(uri)) {
@@ -773,15 +528,12 @@ function wirePan(canvas, preview, target) {
     const img = images.get(card().photoId);
     if (!img) return;
     const p = target.rect();
-    const passend = card().fit === 'passend';
-    const s = (passend ? Math.min : Math.max)(p.w / img.width, p.h / img.height) * card().zoom;
+    const s = Math.max(p.w / img.width, p.h / img.height) * card().zoom;
     const dw = img.width * s, dh = img.height * s;
     const unit = canvas.clientWidth || 1;
     const c = card();
-    // Werkt in beide richtingen: bij 'vullen' is de foto groter dan het vak, bij
-    // 'hele foto' vaak smaller - dan schuif je hem binnen het vak heen en weer.
-    if (Math.abs(dw - p.w) > 1e-6) c.focus.x = clamp(c.focus.x + (e.clientX - lastX) / unit / (p.w - dw), 0, 1);
-    if (Math.abs(dh - p.h) > 1e-6) c.focus.y = clamp(c.focus.y + (e.clientY - lastY) / unit / (p.h - dh), 0, 1);
+    if (dw > p.w) c.focus.x = clamp(c.focus.x + (e.clientX - lastX) / unit / (p.w - dw), 0, 1);
+    if (dh > p.h) c.focus.y = clamp(c.focus.y + (e.clientY - lastY) / unit / (p.h - dh), 0, 1);
     lastX = e.clientX; lastY = e.clientY;
     target.repaint();
   });
@@ -998,12 +750,6 @@ function paintBackPreview() {
 
 function updateBackControls() {
   const heeftFoto = !!game.back.photoId;
-  const passend = game.back.fit === 'passend';
-  el('#backFit').disabled = !heeftFoto;
-  el('#backFit').textContent = passend ? '▣' : '⬚';
-  el('#backFit').title = passend ? 'Nu: hele afbeelding met vervaagde randen. Klik om te vullen.'
-                                 : 'Nu: gevuld. Klik om de hele afbeelding te tonen (met vervaagde randen).';
-  el('#backFit').setAttribute('aria-pressed', String(passend));
   el('#backPattern').disabled = heeftFoto;
   el('#backZoom').disabled = !heeftFoto;
   el('#backClear').disabled = !heeftFoto;
@@ -1019,8 +765,6 @@ async function setBackPhoto(files) {
     game.back.photoId = id;
     game.back.focus = { x: .5, y: .5 };
     game.back.zoom = 1;
-    game.back.fit = 'vullen';
-    if (images.get(id)) game.back.fotoHash = vingerafdruk(images.get(id));
     el('#backZoom').value = 1;
     updateBackControls();
     paintBackPreview();
@@ -1039,195 +783,6 @@ function openPrintDialog() {
   updateBackControls();
   el('#printDialog').showModal();
   paintBackPreview();
-}
-
-/* ---------------- nieuwe versie ---------------- */
-// Staat er op GitHub een nieuwere versie dan deze, dan een melding. Zo blijven er
-// geen oude versies lang openstaan naast nieuwe.
-
-function wireVersieCheck() {
-  const m = /\/gh\/([^@]+)@([0-9a-f]{40})\//.exec(window.KWARTET_BRON || '');
-  if (!m) return;                      // lokaal, of geladen via de terugval: niets te vergelijken
-  const [, repo, sha] = m;
-  let laatst = 0;
-  const kijk = async () => {
-    if (document.hidden || Date.now() - laatst < 60000 || el('#nieuweVersie')) return;
-    laatst = Date.now();
-    try {
-      const res = await fetch(`https://api.github.com/repos/${repo}/commits/main`, {
-        headers: { Accept: 'application/vnd.github.sha' }, cache: 'no-cache',
-      });
-      if (!res.ok) return;
-      const nieuwste = (await res.text()).trim();
-      if (/^[0-9a-f]{40}$/.test(nieuwste) && nieuwste !== sha) toonNieuweVersie();
-    } catch (e) { /* later weer */ }
-  };
-  setInterval(kijk, 5 * 60 * 1000);
-  window.addEventListener('focus', kijk);
-}
-
-async function bewaarNu() {
-  clearTimeout(saveTimer);
-  while (saving) await new Promise((r) => setTimeout(r, 100));
-  await persist();
-}
-
-function toonNieuweVersie() {
-  const balk = document.createElement('div');
-  balk.id = 'nieuweVersie';
-  balk.className = 'nieuwe-versie';
-  balk.innerHTML = '<span>Er is een nieuwe versie van de Kwartetmaker.</span> <button class="btn primary">Herladen</button>';
-  balk.querySelector('button').addEventListener('click', async (e) => {
-    e.target.disabled = true;
-    e.target.textContent = 'Bewaren…';
-    try { await bewaarNu(); } finally { location.reload(); }
-  });
-  document.body.appendChild(balk);
-}
-
-/* ---------------- takenlijst ---------------- */
-// Staat in het spel zelf, dus gaat mee met samenwerken (live gedeeld) en back-ups.
-
-function mijnNaam() {
-  try { return localStorage.getItem('kwartet-naam') || ''; } catch (e) { return ''; }
-}
-
-function korteDatum(iso) {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '';
-  return d.toLocaleString('nl-NL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-}
-
-function renderTaken() {
-  const open = game.todos.filter((t) => !t.klaar);
-  const klaar = game.todos.filter((t) => t.klaar);
-  el('#takenAantal').textContent = open.length;
-  el('#takenAantal').hidden = !open.length;
-  if (el('#taken').hidden) return;
-
-  const q = game.quartets[current];
-  el('#takenKoppelTekst').textContent = q
-    ? `hoort bij kwartet ${current + 1}${q.theme.trim() ? ` “${q.theme.trim()}”` : ''}` : '';
-  // Niet opnieuw opbouwen terwijl iemand een taak aan het aanpassen is.
-  if (el('#taken').querySelector('input.bewerk')) return;
-
-  vulTaken(el('#takenLijst'), open);
-  if (!open.length) el('#takenLijst').innerHTML = '<li class="taken-leeg">Niets meer te doen.</li>';
-  vulTaken(el('#takenKlaarLijst'), klaar);
-  el('#takenKlaarBlok').hidden = !klaar.length;
-  el('#takenKlaarKop').textContent = `Afgevinkt (${klaar.length})`;
-}
-
-function vulTaken(ul, items) {
-  ul.innerHTML = '';
-  for (const t of items) {
-    const zoek = () => game.todos.find((x) => x.id === t.id);   // actueel, ook na een update
-    const li = document.createElement('li');
-    li.className = 'taak' + (t.klaar ? ' klaar' : '');
-    li.innerHTML = `<input type="checkbox" aria-label="Klaar">
-      <div class="taak-inhoud"><span class="tekst" title="Dubbelklik om aan te passen"></span><span class="meta"></span></div>
-      <button class="weg" title="Weghalen">✕</button>`;
-    const vink = li.querySelector('input');
-    vink.checked = t.klaar;
-    li.querySelector('.tekst').textContent = t.tekst;
-
-    const meta = li.querySelector('.meta');
-    const delen = [t.door, t.wanneer && korteDatum(t.wanneer)].filter(Boolean);
-    meta.textContent = delen.join(' · ');
-    const qi = game.quartets.findIndex((x) => x.id === t.kwartetId);
-    if (qi >= 0) {
-      const kw = document.createElement('button');
-      kw.className = 'kw';
-      kw.textContent = `kwartet ${qi + 1}`;
-      kw.style.color = game.quartets[qi].color;
-      kw.title = game.quartets[qi].theme.trim() || 'zonder thema';
-      kw.addEventListener('click', () => select(qi));
-      meta.append(delen.length ? ' · ' : '', kw);
-    }
-
-    vink.addEventListener('change', () => {
-      const x = zoek();
-      if (x) { x.klaar = vink.checked; save(); }
-      renderTaken();
-    });
-    li.querySelector('.weg').addEventListener('click', () => {
-      game.todos = game.todos.filter((x) => x.id !== t.id);
-      save();
-      renderTaken();
-    });
-    li.querySelector('.tekst').addEventListener('dblclick', () => bewerkTaak(li, zoek));
-    ul.appendChild(li);
-  }
-}
-
-function bewerkTaak(li, zoek) {
-  const t = zoek();
-  if (!t) return;
-  const span = li.querySelector('.tekst');
-  const invoer = document.createElement('input');
-  invoer.className = 'bewerk';
-  invoer.value = t.tekst;
-  span.replaceWith(invoer);
-  invoer.focus();
-  invoer.select();
-  let klaar = false;
-  const stop = (bewaren) => {
-    if (klaar) return;
-    klaar = true;
-    const x = zoek();
-    const tekst = invoer.value.trim();
-    if (bewaren && x && tekst && tekst !== x.tekst) { x.tekst = tekst; save(); }
-    invoer.remove();
-    renderTaken();
-  };
-  invoer.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') stop(true);
-    if (e.key === 'Escape') stop(false);
-  });
-  invoer.addEventListener('blur', () => stop(true));
-}
-
-function zetTakenOpen(open) {
-  el('#taken').hidden = !open;
-  el('#openTaken').setAttribute('aria-pressed', String(open));
-  try { localStorage.setItem('kwartet-taken', open ? '1' : '0'); } catch (e) { /* */ }
-  if (open) { renderTaken(); el('#takenTekst').focus(); }
-  requestAnimationFrame(repaintQuartet);          // kaartjes zijn smaller of breder geworden
-}
-
-function wireTaken() {
-  el('#takenUitleg').textContent = store.opServer
-    ? 'Gedeeld: iedereen die aan dit spel werkt, ziet dezelfde lijst.'
-    : 'Staat in deze browser, en gaat mee in de back-up.';
-  el('#takenNaam').value = mijnNaam();
-  el('#takenNaam').addEventListener('input', (e) => {
-    try { localStorage.setItem('kwartet-naam', e.target.value.trim()); } catch (err) { /* */ }
-  });
-  el('#openTaken').addEventListener('click', () => zetTakenOpen(el('#taken').hidden));
-  el('#sluitTaken').addEventListener('click', () => zetTakenOpen(false));
-  el('#takenForm').addEventListener('submit', (e) => {
-    e.preventDefault();
-    const tekst = el('#takenTekst').value.trim();
-    if (!tekst) return;
-    const q = game.quartets[current];
-    game.todos.push({
-      id: uid(), tekst, klaar: false, door: mijnNaam(), wanneer: new Date().toISOString(),
-      kwartetId: el('#takenKoppel').checked && q ? q.id : null,
-    });
-    el('#takenTekst').value = '';
-    save();
-    renderTaken();
-  });
-  el('#takenOpruimen').addEventListener('click', () => {
-    const n = game.todos.filter((t) => t.klaar).length;
-    if (!n || !confirm(`${n} afgevinkte ${n === 1 ? 'taak' : 'taken'} weghalen?`)) return;
-    game.todos = game.todos.filter((t) => !t.klaar);
-    save();
-    renderTaken();
-  });
-  let open = false;
-  try { open = localStorage.getItem('kwartet-taken') === '1'; } catch (e) { /* */ }
-  zetTakenOpen(open);
 }
 
 /* ---------------- bekijk-link ---------------- */
@@ -1277,16 +832,9 @@ function wireShareDialog() {
 /* ---------------- toast ---------------- */
 
 let toastTimer = null;
-function toast(msg, ms = 3200, knop = null) {
+function toast(msg, ms = 3200) {
   const t = el('#toast');
   t.textContent = msg;
-  if (knop) {
-    const b = document.createElement('button');
-    b.className = 'toast-knop';
-    b.textContent = knop.tekst;
-    b.addEventListener('click', () => { t.hidden = true; knop.doe(); });
-    t.append(' ', b);
-  }
   t.hidden = false;
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => { t.hidden = true; }, ms);
@@ -1310,38 +858,20 @@ async function deleteQuartet(qi) {
   select(Math.min(qi, game.quartets.length - 1));
 }
 
-// Vult ontbrekende of ongeldige velden aan. Velden die deze versie niet kent
-// blijven staan (...g, ...b, ...t, ...q): die kunnen van een nieuwere versie
-// van de app komen, en mogen dan niet verdwijnen.
 function normalizeGame(raw) {
   const g = raw && typeof raw === 'object' ? raw : {};
   const b = (g.back && typeof g.back === 'object') ? g.back : {};
   const out = {
-    ...g,
     title: typeof g.title === 'string' ? g.title : 'Mijn kwartet',
     back: {
-      ...b,
       color: isHex(b.color) ? b.color : '#2f4858',
       title: typeof b.title === 'string' ? b.title : '',
       pattern: ['stippen', 'strepen', 'effen'].includes(b.pattern) ? b.pattern : 'stippen',
       photoId: typeof b.photoId === 'string' ? b.photoId : null,
       focus: (b.focus && typeof b.focus.x === 'number') ? b.focus : { x: .5, y: .5 },
       zoom: typeof b.zoom === 'number' ? b.zoom : 1,
-      fit: b.fit === 'passend' ? 'passend' : 'vullen',
     },
-    todos: (Array.isArray(g.todos) ? g.todos : [])
-      .filter((t) => t && typeof t.id === 'string' && typeof t.tekst === 'string')
-      .map((t) => ({
-        ...t,
-        id: t.id,
-        tekst: t.tekst,
-        klaar: !!t.klaar,
-        door: typeof t.door === 'string' ? t.door : '',
-        wanneer: typeof t.wanneer === 'string' ? t.wanneer : '',
-        kwartetId: typeof t.kwartetId === 'string' ? t.kwartetId : null,
-      })),
     quartets: (Array.isArray(g.quartets) ? g.quartets : []).map((q) => ({
-      ...q,
       id: (q && q.id) || uid(),
       theme: (q && typeof q.theme === 'string') ? q.theme : '',
       color: (q && isHex(q.color)) ? q.color : null,
@@ -1359,21 +889,6 @@ function normalizeGame(raw) {
 /* ---------------- back-up ---------------- */
 
 async function makeBackup() {
-  // Gehost met een nieuwe api.php: de server maakt de zip zelf, in één verzoek.
-  // Scheelt tientallen losse verzoeken waar de host op kan afremmen.
-  if (store.opServer && store.apiVersie >= 3) {
-    toast('Back-up maken…', 60000);
-    await bewaarNu();                              // eerst de laatste wijzigingen naar de server
-    const a = document.createElement('a');
-    a.href = 'api.php?actie=backup';
-    a.download = `${safeName(game.title, 'Kwartet')} - back-up.zip`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    toast('Back-up wordt gedownload.');
-    return;
-  }
-
   const files = [{
     name: 'spel.json',
     data: new TextEncoder().encode(JSON.stringify({ app: 'kwartetmaker', versie: 1, spel: game }, null, 2)),
@@ -1381,13 +896,9 @@ async function makeBackup() {
   const ids = new Set();
   for (const q of game.quartets) for (const c of q.cards) if (c.photoId) ids.add(c.photoId);
   if (game.back.photoId) ids.add(game.back.photoId);
-  let n = 0;
   for (const id of ids) {
-    n++;
-    toast(`Back-up maken… foto ${n} van ${ids.size}`, 60000);
     const blob = await store.getPhoto(id);
     if (blob) files.push({ name: `fotos/${id}.jpg`, data: new Uint8Array(await blob.arrayBuffer()) });
-    if (store.opServer) await new Promise((r) => setTimeout(r, 60));   // de host niet overvragen
   }
   downloadBlob(makeZip(files), `${safeName(game.title, 'Kwartet')} - back-up.zip`);
   toast(`Back-up gemaakt: ${ids.size} foto's en alle titels.`);
@@ -1419,7 +930,6 @@ async function restoreBackup(file) {
   select(0);
   setStatus('Bewaard ✓');
   toast('Back-up teruggezet.');
-  vulVingerafdrukken();
 }
 
 /* ---------------- inloggen (alleen bij opslag op de server) ---------------- */
@@ -1455,10 +965,6 @@ function vraagWachtwoord(melding) {
 /* ---------------- start ---------------- */
 
 async function init() {
-  // Welke versie draait er? (Gehost: de commit op GitHub, zie vimexx/laden.js.)
-  const versie = /@([0-9a-f]{7})/.exec(window.KWARTET_BRON || '');
-  el('.brand').title = versie ? `Versie ${versie[1]}` : 'Lokale versie';
-
   const verbinding = await store.connect();
   if (verbinding.server) {
     document.querySelectorAll('.serveronly').forEach((n) => { n.hidden = false; });
@@ -1481,14 +987,6 @@ async function init() {
   select(0);
   setStatus('Bewaard ✓');
   if (store.opServer) { startSync(); wireShareDialog(); }
-  setTimeout(vulVingerafdrukken, 1500);
-  wireTaken();
-  wireVersieCheck();
-  el('#sorteer').addEventListener('click', () => {
-    sorteerAZ = !sorteerAZ;
-    try { localStorage.setItem('kwartet-sortering', sorteerAZ ? 'az' : 'nr'); } catch (e) { /* */ }
-    renderSidebar();
-  });
 
   el('#gameTitle').addEventListener('input', (e) => { game.title = e.target.value; save(); });
   el('#addQuartet').addEventListener('click', addQuartet);
@@ -1509,15 +1007,6 @@ async function init() {
   el('#backColor').addEventListener('input', (e) => { game.back.color = e.target.value; paintBackPreview(); save(); });
   el('#backPattern').addEventListener('change', (e) => { game.back.pattern = e.target.value; paintBackPreview(); save(); });
   el('#backZoom').addEventListener('input', (e) => { game.back.zoom = Number(e.target.value); paintBackPreview(); save(); });
-  el('#backFit').addEventListener('click', () => {
-    game.back.fit = game.back.fit === 'passend' ? 'vullen' : 'passend';
-    game.back.zoom = 1;
-    game.back.focus = { x: .5, y: .5 };
-    el('#backZoom').value = 1;
-    updateBackControls();
-    paintBackPreview();
-    save();
-  });
   el('#backPick').addEventListener('click', () => { pickTarget = 'back'; el('#filePicker').value = ''; el('#filePicker').click(); });
   el('#backClear').addEventListener('click', async () => {
     if (!game.back.photoId) return;
@@ -1526,8 +1015,6 @@ async function init() {
     game.back.photoId = null;
     game.back.focus = { x: .5, y: .5 };
     game.back.zoom = 1;
-    game.back.fit = 'vullen';
-    delete game.back.fotoHash;
     el('#backZoom').value = 1;
     updateBackControls();
     paintBackPreview();

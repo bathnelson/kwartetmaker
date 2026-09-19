@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kwartetmaker</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">🃏 Kwartetmaker</div>
+  <label class="inline"><span class="lbl">Speltitel</span>
+    <input id="gameTitle" type="text" placeholder="Naam van het spel" autocomplete="off">
+  </label>
+  <div class="spacer"></div>
+  <span id="status" class="status"></span>
+  <button id="openShare" class="btn serveronly" hidden>Delen…</button>
+  <button id="openPrint" class="btn">Printvellen…</button>
+  <button id="exportAll" class="btn primary">Exporteer alles</button>
+</header>
+
+<main>
+  <aside class="sidebar">
+    <div class="sidebar-head">
+      <h2>Kwartetten</h2>
+      <span id="progress" class="muted"></span>
+    </div>
+    <ol id="quartetList" class="quartet-list"></ol>
+    <div class="sidebar-foot">
+      <button id="addQuartet" class="btn ghost">+ Kwartet toevoegen</button>
+      <div class="foot-links">
+        <button id="backup" class="btn link">Back-up maken</button>
+        <span class="sep">·</span>
+        <button id="restore" class="btn link">Terugzetten…</button>
+        <span class="sep">·</span>
+        <button id="newGame" class="btn link danger">Nieuw spel…</button>
+        <span class="sep serveronly" hidden>·</span>
+        <button id="logout" class="btn link serveronly" hidden>Uitloggen</button>
+      </div>
+    </div>
+  </aside>
+
+  <section id="editor" class="editor"></section>
+</main>
+
+<input id="filePicker" type="file" accept="image/*" multiple hidden>
+<input id="backupPicker" type="file" accept=".zip,application/zip" hidden>
+<dialog id="loginDialog" class="dialog">
+  <form id="loginForm" class="dialog-body login">
+    <h2>Kwartetmaker</h2>
+    <p id="loginMelding" class="hint"></p>
+    <label class="row" id="loginVeld">Wachtwoord
+      <input id="loginWachtwoord" type="password" autocomplete="current-password" required>
+    </label>
+    <p id="loginFout" class="fout" hidden></p>
+    <div class="dialog-actions">
+      <button type="submit" class="btn primary">Inloggen</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="shareDialog" class="dialog">
+  <form method="dialog" class="dialog-body share">
+    <h2>Bekijk-link delen</h2>
+    <p class="hint">Iedereen met deze link kan het hele kwartet bekijken, ook op
+      een telefoon, zonder wachtwoord. Aanpassen, downloaden en printen kan er
+      niet mee. Wijzigingen zijn binnen een paar seconden te zien.</p>
+    <p id="shareGeen" class="share-geen">Er is nog geen link.</p>
+    <div id="shareLink" class="share-link">
+      <input id="shareUrl" type="text" readonly>
+      <button type="button" id="shareCopy" class="btn">Kopieer</button>
+      <a id="shareOpen" class="btn" target="_blank" rel="noopener">Bekijk</a>
+    </div>
+    <div class="dialog-actions">
+      <button type="button" id="shareOff" class="btn link danger">Link uitzetten</button>
+      <span class="spacer"></span>
+      <button type="button" id="shareNew" class="btn">Link maken</button>
+      <button value="close" class="btn primary">Klaar</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="printDialog" class="dialog">
+  <form method="dialog" class="dialog-body">
+    <h2>Printvellen maken</h2>
+    <div class="dialog-cols">
+      <section>
+        <h3>Achterkant</h3>
+        <p class="hint">Voor alle kaartjes hetzelfde, anders zie je van achteren
+          welk kwartet het is.</p>
+        <div class="back-preview preview"><canvas id="backPreview"></canvas></div>
+        <div class="cardtools">
+          <button type="button" class="icon" id="backPick" title="Afbeelding kiezen">🖼</button>
+          <input id="backZoom" class="zoom" type="range" min="1" max="3" step="0.01" title="Inzoomen">
+          <button type="button" class="icon" id="backClear" title="Afbeelding verwijderen">✕</button>
+        </div>
+        <p class="hint">Sleep hier een foto op, of kies er een met 🖼. Slepen in
+          het kaartje verschuift de uitsnede.</p>
+      </section>
+      <section class="dialog-form">
+        <label class="row">Tekst
+          <input id="backTitle" type="text" placeholder="Naam van het spel" autocomplete="off">
+        </label>
+        <label class="row">Kleur
+          <input id="backColor" type="color">
+        </label>
+        <label class="row">Motief
+          <select id="backPattern">
+            <option value="stippen">Stippen</option>
+            <option value="strepen">Strepen</option>
+            <option value="effen">Effen</option>
+          </select>
+        </label>
+        <h3>Printen</h3>
+        <label class="check"><input id="optBacks" type="checkbox" checked> Achterkanten meeprinten</label>
+        <label class="check"><input id="optMarks" type="checkbox" checked> Snijlijnen in de marge</label>
+        <label class="check"><input id="optEmpty" type="checkbox"> Ook lege kwartetten</label>
+        <p class="hint">9 kaartjes per A4 (63 × 88 mm). Print dubbelzijdig met
+          omslaan over de <strong>lange kant</strong> en zet "ware grootte" /
+          100 % aan, niet "passend maken".</p>
+      </section>
+    </div>
+    <div class="dialog-actions">
+      <button value="cancel" class="btn">Sluiten</button>
+      <button id="makePdf" value="pdf" class="btn primary">Maak PDF</button>
+    </div>
+  </form>
+</dialog>
+
+<div id="toast" class="toast" hidden></div>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>

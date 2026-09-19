@@ -23,20 +23,18 @@ Waarom https: Safari 26 weigert `http://localhost` met *'Alleen HTTPS' is
 ingeschakeld*. Met een eigen certificaat is dat probleem weg en werkt elke
 browser.
 
-Handmatig starten kan ook (eerst naar je thuismap, zie hieronder):
+Handmatig starten kan ook:
 
 ```bash
-cd ~ && python3 ~/Desktop/Workspace/kwartetmaker/serve.py ~/Desktop/Workspace/kwartetmaker --cert ~/.kwartetmaker/localhost.pem --lan
+python3 ~/Applications/kwartetmaker/serve.py ~/Applications/kwartetmaker --cert ~/.kwartetmaker/localhost.pem --lan
 ```
 
 De app moet via de server draaien (niet door `index.html` te dubbelklikken),
 anders werkt de opslag in de browser niet.
 
-Het Bureaublad en Documenten zijn door macOS beschermde mappen. De eerste keer
-vraagt macOS of Terminal erbij mag: klik OK (of zet het aan via
-Systeeminstellingen > Privacy en beveiliging > Bestanden en mappen > Terminal).
-Python start niet vanuit zo'n map (`Operation not permitted`); `start.command`
-gaat daarom eerst naar je thuismap.
+Let op: zet de map niet op je Bureaublad of in Documenten. Dat zijn door macOS
+beschermde mappen; Terminal krijgt daar geen toegang en python stopt dan met
+`Operation not permitted`. `/Applications` of je thuismap werkt prima.
 
 ## Op een andere computer
 
@@ -44,8 +42,8 @@ De server is ook bereikbaar voor andere computers in hetzelfde netwerk. Bij het
 starten drukt hij de adressen af, bijvoorbeeld:
 
 ```
-andere computer: https://JouwMac.local:4177/
-andere computer: https://192.168.1.20:4177/
+andere computer: https://Hanss-MacBook-Air.local:4177/
+andere computer: https://10.0.1.34:4177/
 ```
 
 Gebruik bij voorkeur het `.local`-adres; dat blijft gelijk, ook als je
@@ -75,8 +73,7 @@ Alles komt dan van de webhost: de pagina zelf én de opslag. Je hebt
 `start.command`, `serve.py` en het certificaat niet meer nodig, en Safari doet
 gewoon mee omdat Vimexx al https levert.
 
-1. Kopieer `vimexx/config.voorbeeld.php` naar `vimexx/config.php` en zet er een
-   wachtwoord in:
+1. Zet een wachtwoord in `config.php`:
 
    ```php
    'wachtwoord' => 'iets-wat-niemand-raadt',
@@ -84,17 +81,16 @@ gewoon mee omdat Vimexx al https levert.
 
    Zolang dat leeg is, weigert de server alles. Een kwartet met je eigen foto's
    hoort niet open en bloot online te staan.
-2. Zet met FTP (of het bestandsbeheer van Vimexx) de inhoud van de map
-   `vimexx/` in de webmap, bijvoorbeeld `public_html/kwartet/`:
+2. Zet met FTP (of het bestandsbeheer van Vimexx) deze bestanden in de webmap,
+   bijvoorbeeld `public_html/kwartet/`:
 
    ```
-   index.html   bekijk.html   laden.js
-   api.php      config.php    .htaccess   (verborgen: ⌘⇧. in de Finder)
+   index.html  bekijk.html  api.php  config.php  .htaccess  css/  js/
    ```
 
-   `config.voorbeeld.php` hoeft niet mee. Meer is het niet: de app zelf (css en
-   js) haalt `laden.js` van GitHub, en `api.php` bewaart het spel op Vimexx.
-   `upload.command` doet dit voor je.
+   `start.command`, `serve.py` en `maak-certificaat.sh` zijn alleen voor de
+   lokale versie; die kun je weglaten. Neem je ze toch mee, dan blokkeert de
+   meegeleverde `.htaccess` ze.
 3. Zorg dat de webserver in die map mag schrijven (de map `data` wordt vanzelf
    aangemaakt, rechten 755 is meestal genoeg).
 4. Open `https://jouwdomein.nl/kwartet/`. Je krijgt een inlogscherm; daarna
@@ -104,34 +100,6 @@ De app kijkt zelf of er een `api.php` naast staat. Is die er, dan bewaart hij
 alles op de server (`data/spel.json` en `data/fotos/*.jpg`); zo niet, dan in de
 browser. Je hoeft dus niets om te zetten - en met *Back-up maken* en
 *Terugzetten…* verhuis je een spel van de ene naar de andere plek.
-
-### Updates: via GitHub, niet via FTP
-
-De code staat op GitHub (`bathnelson/kwartetmaker`). `laden.js` op Vimexx vraagt
-GitHub bij het openen welke versie de nieuwste is en haalt dan alle css en js op
-via het jsDelivr-CDN, met dat versienummer in het adres. Gevolg:
-
-- Een update uitrollen is `git push`. Binnen ongeveer een minuut (zo lang
-  houdt GitHub het antwoord vast) krijgt iedereen bij de volgende keer laden de
-  nieuwe versie; de pagina's op Vimexx hoeven niet te veranderen.
-- Welke versie je draait, zie je door je muis op "Kwartetmaker" linksboven te
-  houden. Staat er intussen een nieuwere klaar, dan verschijnt bovenin een
-  melding met *Herladen* (die eerst alles opslaat).
-- Een oudere versie die nog ergens openstaat, laat gegevens van een nieuwere
-  versie met rust: velden die hij niet kent, blijven bewaard.
-- Je krijgt altijd alle bestanden van precies dezelfde versie, nooit een mix
-  van oud en nieuw uit de browsercache.
-- Is GitHub even onbereikbaar, dan valt `laden.js` terug op de laatste versie
-  die jsDelivr kent (die kan dan een paar uur achterlopen).
-
-Alleen `api.php` draait op de server zelf en kan dus niet van GitHub komen
-(GitHub kan geen PHP draaien; de kopie in de repo is alleen de broncode).
-Verandert die, dan zegt de app bij het openen dat hij opnieuw geüpload moet
-worden. `config.php` staat nooit op GitHub (zie `.gitignore`); daarin staat je
-wachtwoord.
-
-Omdat de code die je ingelogde app draait van GitHub komt: zet
-tweestapsverificatie aan op je GitHub-account.
 
 ### Met meer computers tegelijk
 
@@ -176,7 +144,7 @@ Bij Vimexx (DirectAdmin) ziet dat er zo uit:
 /home/GEBRUIKER/domains/JOUWDOMEIN.nl/kwartet-data/          <- de datamap
 ```
 
-In `vimexx/config.php` zet je dan:
+In `config.php` zet je dan:
 
 ```php
 'datamap' => __DIR__ . '/../../kwartet-data',
@@ -202,34 +170,8 @@ wachtwoord - anders als tekst uitserveren.
   van dat kwartet automatisch gevuld. Klikken op een leeg kaartje of plakken
   (⌘V) werkt ook.
 - **Uitsnede**: sleep in het kaartje om de foto te verschuiven, scroll om in te
-  zoomen. Wijs je een kaartje aan, dan verschijnt er bovenop een balkje met
-  ⠿ (verslepen), 🖼 (andere foto), ⬚/▣ (vullen of hele foto), ✕ (foto weg),
-  🗑 (kaartje leegmaken) en een zoomschuif.
-- **Staande foto's**: het fotovak is liggend. Een staande foto krijgt daarom
-  automatisch *hele foto*: de foto staat er helemaal op, met links en rechts een
-  vervaagde versie van dezelfde foto als opvulling. Met ⬚/▣ wissel je per
-  kaartje tussen dat en *vullen* (kader helemaal vol, randen vallen weg). Ook bij
-  *hele foto* kun je slepen en zoomen: schuif hem naar links of rechts binnen het
-  kader, of zoom in en schuif dan ook op en neer. Voor de achterkant zit
-  dezelfde knop in het printvenster.
-- **Wisselen**: pak een kaartje aan ⠿ en laat het op een ander kaartje vallen:
-  foto én titel wisselen van plek. Houd ⌥ ingedrukt bij het loslaten om alleen
-  de foto's te wisselen. De kleine ⠿ voor een titelveld wisselt alleen titels.
-- **Leegmaken**: 🗑 haalt foto en titel weg; in de melding onderin kun je het
-  nog ongedaan maken.
-- **Dubbele foto's**: staat dezelfde foto al ergens anders in het spel, dan
-  meldt de app dat bij het plaatsen (met *Toon* om ernaartoe te gaan), zet er
-  een ⚠-label op het kaartje en een ⚠ in de zijbalk. De app herkent de foto aan
-  wat erop staat, niet aan het bestand: ook als hij verkleind of als ander
-  bestand is opgeslagen, of door iemand anders vanaf een andere computer is
-  geplaatst. Het is een waarschuwing; je mag een foto gewoon twee keer gebruiken.
-- **Zoeken**: A–Z boven de lijst sorteert de kwartetten op naam. Alleen de lijst:
-  de nummers op de kaartjes blijven gelijk, zodat geprinte kaartjes kloppen.
-- **Takenlijst**: *Taken* bovenin toont of verbergt een lijst voor dingen die
-  nog moeten gebeuren of die je mist; het bolletje telt wat er nog openstaat.
-  Een taak kan bij een kwartet horen (klik erop om ernaartoe te gaan). Vul je
-  naam in, dan zien anderen wie wat schreef. In de gehoste versie is de lijst
-  gedeeld en live; dubbelklik om een taak aan te passen.
+  zoomen. Wijs je een kaartje aan, dan verschijnt er bovenop een balkje met 🖼
+  (andere foto), een zoomschuif en ✕ (foto weg).
 - **Naast Photos**: de app is gemaakt om in split screen naast Apple Photos te
   werken (bijv. een halve iMac 21,5"). De vier kaartjes staan in een 2×2 en
   schalen mee met de hoogte van het venster, zodat ze altijd alle vier in beeld
@@ -258,11 +200,6 @@ Onderin de zijbalk:
 
 Zo verhuis je een spel ook naar de andere computer, naar een andere browser, of
 terug na het wissen van je websitegegevens.
-
-In de gehoste versie maakt de server de zip in één keer. Veel losse verzoeken
-vlak achter elkaar (een foto per verzoek) kunnen bij een webhost tegen een limiet
-aanlopen ("429 Too Many Requests"); gebeurt dat toch, bijvoorbeeld bij printvellen
-met veel foto's, dan wacht de app even en probeert het opnieuw.
 
 ## Printvellen
 
@@ -300,7 +237,7 @@ Alles wordt automatisch bewaard in de browser (IndexedDB), inclusief de foto's,
 en staat er de volgende keer weer. Twee dingen om te weten:
 
 - De opslag hoort bij het adres waarop je werkt. `https://localhost:4177` en
-  `https://JouwMac.local:4177` zijn voor de browser twee
+  `https://Hanss-MacBook-Air.local:4177` zijn voor de browser twee
   verschillende plekken, elk met een eigen spel. Kies er dus één en blijf die
   gebruiken.
 - Wis je de websitegegevens van die site, dan is het spel weg. *Nieuw spel…*
@@ -308,16 +245,6 @@ en staat er de volgende keer weer. Twee dingen om te weten:
 
 Foto's worden bij het plaatsen verkleind naar maximaal 1800 px en opgeslagen
 als JPEG, ruim genoeg voor printkwaliteit.
-
-## Testen
-
-Het samenvoegen van wijzigingen en het herkennen van dubbele foto's hebben
-eigen tests:
-
-```bash
-node tests/sync.test.mjs
-node tests/dubbel.test.mjs
-```
 
 ## Bestanden
 
@@ -334,16 +261,10 @@ node tests/dubbel.test.mjs
 | `js/store-local.js` | opslag in de browser (IndexedDB) |
 | `js/store-server.js` | opslag via `api.php` |
 | `js/sync.js` | voegt wijzigingen van verschillende computers samen |
-| `js/dubbel.js` | herkent dubbele foto's aan wat erop staat |
-| `tests/sync.test.mjs`, `tests/dubbel.test.mjs` | tests voor samenvoegen en dubbele foto's |
 | `bekijk.html`, `js/bekijk.js`, `css/bekijk.css` | de bekijkpagina achter de deel-link |
-| `vimexx/` | alles wat op Vimexx staat - de inhoud van deze map upload je |
-| `vimexx/index.html`, `bekijk.html`, `laden.js` | minipagina's die de app van GitHub laden |
-| `vimexx/api.php` | de server-opslag voor de gehoste versie |
-| `vimexx/.htaccess` | afscherming op de webhost |
-| `vimexx/config.php` | wachtwoord en datamap (niet in git) |
-| `vimexx/config.voorbeeld.php` | sjabloon voor `config.php` |
-| `php-router.php` | laat `start-php.command` lokaal werken zoals op de server |
+| `api.php` | de server-opslag voor de gehoste versie |
+| `.htaccess` | afscherming op de webhost |
+| `config.php` | wachtwoord en datamap voor de gehoste versie |
 | `js/zip.js` | maakt en leest zipbestanden (export en back-up) |
 | `js/pdf.js` | zet de printvellen in een PDF |
 | `js/colors.js` | het kleurenpalet voor de thema's |
