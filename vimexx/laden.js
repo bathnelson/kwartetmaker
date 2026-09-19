@@ -26,20 +26,18 @@
   }
 
   function laatsteVersie() {
-    // Een minuut onthouden: scheelt verzoeken aan GitHub (max. 60 per uur).
-    try {
-      var onthouden = JSON.parse(sessionStorage.getItem('kwartet-versie') || 'null');
-      if (onthouden && Date.now() - onthouden.t < 60000) return Promise.resolve(onthouden.sha);
-    } catch (e) { /* privévenster e.d. */ }
+    // no-cache: de browser mag een eerder antwoord alleen gebruiken als GitHub
+    // bevestigt dat het nog klopt ("304 niet gewijzigd"). Dat is snel en telt
+    // bij GitHub niet mee voor de limiet van 60 verzoeken per uur.
     return fetch('https://api.github.com/repos/' + REPO + '/commits/' + TAK, {
       headers: { Accept: 'application/vnd.github.sha' },
+      cache: 'no-cache',
     }).then(function (res) {
       if (!res.ok) throw new Error('GitHub ' + res.status);
       return res.text();
     }).then(function (sha) {
       sha = sha.trim();
       if (!/^[0-9a-f]{40}$/.test(sha)) throw new Error('onverwacht antwoord van GitHub');
-      try { sessionStorage.setItem('kwartet-versie', JSON.stringify({ sha: sha, t: Date.now() })); } catch (e) { /* */ }
       return sha;
     });
   }
