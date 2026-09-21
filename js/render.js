@@ -43,6 +43,27 @@ export function drawCover(ctx, img, x, y, w, h, focus, zoom) {
   ctx.drawImage(img, x + (w - dw) * fx, y + (h - dh) * fy, dw, dh);
 }
 
+// Een foto een aantal kwartslagen gedraaid. Het bestand zelf verandert niet;
+// de gedraaide versie wordt per foto en per hoek één keer gemaakt en onthouden.
+const draaiCache = new WeakMap();
+export function gedraaid(img, graden) {
+  const g = (((graden || 0) % 360) + 360) % 360;
+  if (!img || !g) return img;
+  let perHoek = draaiCache.get(img);
+  if (!perHoek) { perHoek = {}; draaiCache.set(img, perHoek); }
+  if (perHoek[g]) return perHoek[g];
+  const kwart = g === 90 || g === 270;
+  const c = document.createElement('canvas');
+  c.width = kwart ? img.height : img.width;
+  c.height = kwart ? img.width : img.height;
+  const ctx = c.getContext('2d');
+  ctx.translate(c.width / 2, c.height / 2);
+  ctx.rotate((g * Math.PI) / 180);
+  ctx.drawImage(img, -img.width / 2, -img.height / 2);
+  perHoek[g] = c;
+  return c;
+}
+
 // Vervaagde opvulling: de foto sterk verkleinen en weer uitvergroten. Werkt in
 // elke browser (ook zonder ctx.filter) en ziet er in preview en print hetzelfde uit.
 function drawBlurFill(ctx, img, x, y, w, h) {

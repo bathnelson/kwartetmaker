@@ -208,8 +208,13 @@ wachtwoord - anders als tekst uitserveren.
   (⌘V) werkt ook.
 - **Uitsnede**: sleep in het kaartje om de foto te verschuiven, scroll om in te
   zoomen. Wijs je een kaartje aan, dan verschijnt er bovenop een balkje met
-  ⠿ (verslepen), 🖼 (andere foto), ⬚/▣ (vullen of hele foto), ✕ (foto weg),
-  🗑 (kaartje leegmaken) en een zoomschuif.
+  ⠿ (verslepen), 🖼 (andere foto), ⬚/▣ (vullen of hele foto), ⟳ (draaien),
+  ✕ (foto weg), 🗑 (kaartje leegmaken) en een zoomschuif.
+- **Draaien**: ⟳ draait een foto een kwartslag met de klok mee. Dat geldt voor
+  de foto, niet voor het kaartje: overal waar hij staat (kaartjes, achterkant,
+  bak, bekijkpagina, printvellen) staat hij daarna recht. Het bestand zelf
+  blijft ongewijzigd. Draaien kan ook vanuit de bak (⟳ linksboven op een foto)
+  en bij de achterkant in het printvenster.
 - **Staande foto's**: het fotovak is liggend. Een staande foto krijgt daarom
   automatisch *hele foto*: de foto staat er helemaal op, met links en rechts een
   vervaagde versie van dezelfde foto als opvulling. Met ⬚/▣ wissel je per

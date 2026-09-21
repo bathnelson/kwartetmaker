@@ -1,6 +1,6 @@
 // Bekijkpagina: toont het hele spel, alleen lezen, live bijgewerkt.
 // Tekent met dezelfde code als de editor (render.js), dus het ziet er hetzelfde uit.
-import { drawCard, drawBack, CARD_RATIO } from './render.js';
+import { drawCard, drawBack, CARD_RATIO, gedraaid } from './render.js';
 import { inkOn, mix } from './colors.js';
 
 const code = new URLSearchParams(location.search).get('t') || '';
@@ -34,6 +34,9 @@ async function laadFoto(id) {
     if (res.ok) images.set(id, await createImageBitmap(await res.blob()));
   } catch (e) { /* laat leeg */ }
 }
+
+const draaiVan = (id) => ((spel.voorraad || []).find((f) => f.photoId === id) || {}).draai || 0;
+const beeld = (id) => (id ? gedraaid(images.get(id) || null, draaiVan(id)) : null);
 
 const gebruikt = (q) => q.theme.trim() || q.cards.some((c) => (c.title || '').trim() || c.photoId);
 
@@ -95,7 +98,7 @@ function kaartModel(q, qi, ci) {
     number: qi + 1,
     titles: q.cards.map((x) => (x.title || '').trim()),
     activeIndex: ci,
-    image: c.photoId ? images.get(c.photoId) || null : null,
+    image: beeld(c.photoId),
     focus: c.focus,
     zoom: c.zoom,
     fit: c.fit,
@@ -108,7 +111,7 @@ function achterModel() {
   const kleur = b.color || '#2f4858';
   return {
     color: kleur, title: b.title || spel.title, pattern: b.pattern,
-    image: b.photoId ? images.get(b.photoId) || null : null, focus: b.focus, zoom: b.zoom, fit: b.fit,
+    image: beeld(b.photoId), focus: b.focus, zoom: b.zoom, fit: b.fit,
     ink: inkOn(kleur), soft: mix(kleur, inkOn(kleur), 0.16),
   };
 }
@@ -149,6 +152,11 @@ function bouw() {
   main.innerHTML = '';
 
   const alle = spel.quartets.map((q, qi) => ({ q, qi })).filter(({ q }) => gebruikt(q));
+  // Niemand iets gekozen: dan zijn er geen filterknoppen, dus ook geen filter.
+  if (filter && !alle.some(({ q }) => ['ja', 'misschien', 'nee'].includes(q.keuze))) {
+    filter = null;
+    try { localStorage.removeItem('kwartet-bekijk-filter'); } catch (e) { /* */ }
+  }
   bouwFilters(alle);
   const zichtbaar = alle.filter(({ q }) => !filter || (KEUZE_TEKEN[q.keuze] ? q.keuze : 'geen') === filter);
   if (!alle.length) {

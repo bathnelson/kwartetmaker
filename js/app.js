@@ -1,6 +1,6 @@
 import * as store from './store.js';
 import { makeZip, readZip, downloadBlob } from './zip.js';
-import { drawCard, drawBack, photoRect, CARD_RATIO, EXPORT_WIDTH, FONT } from './render.js';
+import { drawCard, drawBack, photoRect, CARD_RATIO, EXPORT_WIDTH, FONT, gedraaid } from './render.js';
 import { makePdf } from './pdf.js';
 import { PALETTE, pickColor, isHex, inkOn, mix } from './colors.js';
 import { mergeGame, equal } from './sync.js';
@@ -45,7 +45,7 @@ function backStyle() {
   const b = game.back;
   return {
     color: b.color, title: b.title || game.title, pattern: b.pattern,
-    image: b.photoId ? images.get(b.photoId) : null,
+    image: b.photoId ? gedraaid(images.get(b.photoId), draaiVan(b.photoId)) : null,
     focus: b.focus, zoom: b.zoom, fit: b.fit,
     ink: inkOn(b.color), soft: mix(b.color, inkOn(b.color), 0.16),
   };
@@ -260,7 +260,7 @@ function cardModel(q, qi, ci) {
     number: qi + 1,
     titles: q.cards.map((x) => x.title.trim()),
     activeIndex: ci,
-    image: c.photoId ? images.get(c.photoId) : null,
+    image: c.photoId ? gedraaid(images.get(c.photoId), draaiVan(c.photoId)) : null,
     focus: c.focus,
     zoom: c.zoom,
     fit: c.fit,
@@ -411,6 +411,12 @@ function lijstVolgorde() {
 }
 
 function renderSidebar() {
+  // Heeft niemand iets gekozen (bijv. na Nieuw spel), dan zijn er ook geen
+  // filterknoppen om het filter uit te zetten: dan het filter zelf uitzetten.
+  if (filter && !game.quartets.some((q) => KEUZES[q.keuze])) {
+    filter = null;
+    try { localStorage.removeItem('kwartet-filter'); } catch (e) { /* */ }
+  }
   const list = el('#quartetList');
   list.innerHTML = '';
   const dubbel = zoekDubbel(game);
@@ -511,6 +517,7 @@ function renderEditor() {
               <span class="spring"></span>
               <button class="icon" data-act="pick" title="Foto kiezen">🖼</button>
               <button class="icon fit" data-act="fit"></button>
+              <button class="icon" data-act="draai" title="Foto een kwartslag draaien">⟳</button>
               <button class="icon" data-act="clear" title="Foto verwijderen">✕</button>
               <button class="icon" data-act="empty" title="Kaartje leegmaken (foto en titel)">🗑</button>
               <input class="zoom" type="range" min="1" max="3" step="0.01" title="Inzoomen (of scroll op de foto)">
@@ -634,6 +641,8 @@ function renderEditor() {
     });
 
     col.querySelector('[data-act=empty]').addEventListener('click', () => maakLeeg(ci));
+
+    col.querySelector('[data-act=draai]').addEventListener('click', () => draaiFoto(card.photoId));
 
     const fitKnop = col.querySelector('[data-act=fit]');
     const toonFit = () => {
@@ -1193,6 +1202,7 @@ function updateBackControls() {
   const heeftFoto = !!game.back.photoId;
   const passend = game.back.fit === 'passend';
   el('#backFit').disabled = !heeftFoto;
+  el('#backDraai').disabled = !heeftFoto;
   el('#backFit').textContent = passend ? '▣' : '⬚';
   el('#backFit').title = passend ? 'Nu: hele afbeelding met vervaagde randen. Klik om te vullen.'
                                  : 'Nu: gevuld. Klik om de hele afbeelding te tonen (met vervaagde randen).';
@@ -1308,6 +1318,41 @@ async function vulVoorraad() {
 
 const verhouding = (hash) => (hash ? Number(hash.split(':')[1]) / 100 : 0);
 
+// Draaiing hoort bij de foto (in de voorraad), niet bij het kaartje: staat hij
+// scheef, dan wil je hem overal recht - op elk kaartje, de achterkant, in de bak.
+function draaiVan(id) {
+  const f = game && game.voorraad.find((x) => x.id === id);
+  return (f && f.draai) || 0;
+}
+
+function draaiFoto(id) {
+  if (!id) return;
+  const card0 = game.quartets.flatMap((q) => q.cards).find((c) => c.photoId === id);
+  voegToeAanVoorraad(id, card0 && card0.fotoHash);
+  const f = game.voorraad.find((x) => x.id === id);
+  f.draai = ((f.draai || 0) + 90) % 360;
+  if (!f.draai) delete f.draai;
+  // Staand is liggend geworden of andersom: vullen/hele foto opnieuw kiezen,
+  // en de uitsnede terug naar het midden.
+  const img = gedraaid(images.get(id), f.draai || 0);
+  for (const q of game.quartets) {
+    for (const c of q.cards) {
+      if (c.photoId !== id) continue;
+      c.focus = { x: .5, y: .5 };
+      c.zoom = 1;
+      if (img) c.fit = img.height > img.width * 1.05 ? 'passend' : 'vullen';
+    }
+  }
+  if (game.back.photoId === id) {
+    game.back.focus = { x: .5, y: .5 };
+    game.back.zoom = 1;
+    if (el('#printDialog').open) { el('#backZoom').value = 1; paintBackPreview(); }
+  }
+  renderEditor();
+  renderSidebar();
+  save();
+}
+
 function gebruikFoto(ci, id) {
   slepenUitVoorraad = false;                          // de sleepactie is hiermee klaar
   const q = game.quartets[current];
@@ -1317,7 +1362,8 @@ function gebruikFoto(ci, id) {
   card.photoId = id;
   card.focus = { x: .5, y: .5 };
   card.zoom = 1;
-  const r = verhouding(f.fotoHash);
+  let r = verhouding(f.fotoHash);
+  if (r && (f.draai === 90 || f.draai === 270)) r = 1 / r;
   card.fit = r && r < 0.95 ? 'passend' : 'vullen';     // staand -> hele foto
   if (f.fotoHash) card.fotoHash = f.fotoHash; else delete card.fotoHash;
   renderEditor();
@@ -1385,7 +1431,7 @@ async function gooiWeg(id) {
   if (!confirm('Deze foto definitief weggooien? Hij verdwijnt dan ook uit de voorraad.')) return;
   game.voorraad = game.voorraad.filter((f) => f.id !== id);
   images.delete(id);
-  duimnagels.delete(id);
+  for (const k of [...duimnagels.keys()]) if (k.startsWith(id + '@')) duimnagels.delete(k);
   await store.deletePhoto(id);                          // op de server ruimt api.php hem later op
   renderVoorraad();
   save();
@@ -1393,7 +1439,8 @@ async function gooiWeg(id) {
 
 /* ----- kleine plaatjes voor de voorraad ----- */
 
-const duimnagels = new Map();            // photoId -> data-URL van ca. 160 px
+const duimnagels = new Map();            // "photoId@draai" -> data-URL van ca. 160 px
+const duimSleutel = (id) => `${id}@${draaiVan(id)}`;
 let duimRij = Promise.resolve();
 
 async function maakDuimnagel(id) {
@@ -1404,24 +1451,26 @@ async function maakDuimnagel(id) {
     if (!blob) return null;
     img = tijdelijk = await createImageBitmap(blob);
   }
-  const s = Math.min(1, 160 / Math.max(img.width, img.height));
+  const beeld = gedraaid(img, draaiVan(id));
+  const s = Math.min(1, 160 / Math.max(beeld.width, beeld.height));
   const c = document.createElement('canvas');
-  c.width = Math.round(img.width * s);
-  c.height = Math.round(img.height * s);
-  c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+  c.width = Math.round(beeld.width * s);
+  c.height = Math.round(beeld.height * s);
+  c.getContext('2d').drawImage(beeld, 0, 0, c.width, c.height);
   if (tijdelijk && tijdelijk.close) tijdelijk.close();
   return c.toDataURL('image/jpeg', 0.8);
 }
 
 // Eén voor één ophalen, zodat de host niet gaat afremmen.
 function laadDuimnagel(id) {
-  if (duimnagels.has(id)) return;
+  if (duimnagels.has(duimSleutel(id))) return;
   duimRij = duimRij.then(async () => {
-    if (duimnagels.has(id)) return;
+    const sleutel = duimSleutel(id);
+    if (duimnagels.has(sleutel)) return;
     const onbekend = !images.has(id);
     const url = await maakDuimnagel(id);
     if (!url) return;
-    duimnagels.set(id, url);
+    duimnagels.set(sleutel, url);
     document.querySelectorAll(`.voorraad-foto[data-id="${id}"] img`).forEach((i) => { i.src = url; });
     if (onbekend && store.opServer) await new Promise((r) => setTimeout(r, 120));
   }).catch(() => {});
@@ -1467,7 +1516,7 @@ function renderVoorraad() {
     vak.draggable = true;
     vak.innerHTML = '<img alt="" draggable="false">';
     const img = vak.querySelector('img');
-    if (duimnagels.has(f.id)) img.src = duimnagels.get(f.id);
+    if (duimnagels.has(duimSleutel(f.id))) img.src = duimnagels.get(duimSleutel(f.id));
     else if (duimKijker) duimKijker.observe(vak); else laadDuimnagel(f.id);
 
     if (plekken.length) {
@@ -1488,6 +1537,14 @@ function renderVoorraad() {
       weg.addEventListener('click', (e) => { e.stopPropagation(); gooiWeg(f.id); });
       vak.appendChild(weg);
     }
+
+    const draai = document.createElement('button');
+    draai.type = 'button';
+    draai.className = 'draai';
+    draai.title = 'Een kwartslag draaien (overal waar deze foto staat)';
+    draai.textContent = '⟳';
+    draai.addEventListener('click', (e) => { e.stopPropagation(); draaiFoto(f.id); });
+    vak.appendChild(draai);
 
     vak.addEventListener('dragstart', (e) => {
       slepenUitVoorraad = true;
@@ -1969,6 +2026,7 @@ async function init() {
   el('#backColor').addEventListener('input', (e) => { game.back.color = e.target.value; paintBackPreview(); save(); });
   el('#backPattern').addEventListener('change', (e) => { game.back.pattern = e.target.value; paintBackPreview(); save(); });
   el('#backZoom').addEventListener('input', (e) => { game.back.zoom = Number(e.target.value); paintBackPreview(); save(); });
+  el('#backDraai').addEventListener('click', () => draaiFoto(game.back.photoId));
   el('#backFit').addEventListener('click', () => {
     game.back.fit = game.back.fit === 'passend' ? 'vullen' : 'passend';
     game.back.zoom = 1;
