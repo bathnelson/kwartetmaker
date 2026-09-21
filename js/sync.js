@@ -73,6 +73,7 @@ function mergeList(bl = [], ll = [], rl = [], mergeItem) {
   return out;
 }
 
+// Ook voor de fotovoorraad: losse items met een id, per veld samenvoegen.
 function mergeTodo(b, l, r) {
   return b ? mergeFields(b, l, r) : clone(l);
 }
@@ -80,10 +81,14 @@ function mergeTodo(b, l, r) {
 export function mergeGame(base, local, remote) {
   if (!remote) return clone(local);
   if (!base) return clone(remote);
-  return {
-    ...mergeFields(base, local, remote, ['back', 'todos', 'quartets']),
+  const out = {
+    ...mergeFields(base, local, remote, ['back', 'todos', 'voorraad', 'quartets']),
     back: mergeFields(base.back, local.back, remote.back),
-    todos: mergeList(base.todos, local.todos, remote.todos, mergeTodo),
     quartets: mergeList(base.quartets, local.quartets, remote.quartets, mergeQuartet),
   };
+  // Lijsten alleen als ze ergens bestaan: geen lege lijst verzinnen bij oudere gegevens.
+  for (const [naam, item] of [['todos', mergeTodo], ['voorraad', mergeTodo]]) {
+    if (base[naam] || local[naam] || remote[naam]) out[naam] = mergeList(base[naam], local[naam], remote[naam], item);
+  }
+  return out;
 }

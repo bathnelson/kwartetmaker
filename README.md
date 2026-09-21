@@ -217,6 +217,15 @@ wachtwoord - anders als tekst uitserveren.
   *hele foto* kun je slepen en zoomen: schuif hem naar links of rechts binnen het
   kader, of zoom in en schuif dan ook op en neer. Voor de achterkant zit
   dezelfde knop in het printvenster.
+- **Fotovoorraad**: *Foto's* bovenin opent een bak met alle foto's die ooit zijn
+  geüpload. Sleep er foto's in vanuit Photos (zonder ze meteen te gebruiken),
+  sleep ze vandaar naar een kaartje, of sleep een kaartje aan ⠿ naar de bak om
+  de foto eraf te halen (de titel blijft staan). Foto's die op een kaartje
+  staan hebben een labeltje met het kwartetnummer; het bolletje bij *Foto's*
+  telt de foto's die nog nergens op staan. Foto's worden nooit meer vanzelf
+  weggegooid, ook niet bij vervangen of van een kaartje halen: weggooien kan
+  alleen met ✕ in de bak, en alleen bij foto's die nergens op staan. De bak is
+  gedeeld met iedereen die meewerkt, en gaat mee in de back-up.
 - **Wisselen**: pak een kaartje aan ⠿ en laat het op een ander kaartje vallen:
   foto én titel wisselen van plek. Houd ⌥ ingedrukt bij het loslaten om alleen
   de foto's te wisselen. De kleine ⠿ voor een titelveld wisselt alleen titels.

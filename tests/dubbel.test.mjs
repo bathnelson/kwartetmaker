@@ -24,5 +24,7 @@ check('Opa (kw1) en Kat (kw2) herkend, andere naam, 1 bit anders', d.get('0:0')?
 check('zelfde bestand op kaartje en achterkant herkend', d.get('0:1')?.[0]?.achter === true && d.get('achter')?.[0]?.sleutel === '0:1');
 check('Hond niet dubbel', !d.has('1:0'));
 check('beschrijving', beschrijfPlek(game, { qi: 1, ci: 1 }) === 'kwartet 2 “Dieren”, kaartje 2 (Kat)');
+check('twee effen foto\'s (alleen nullen) niet als dubbel', !lijktOp('0000000000000000:150', '0000000000000001:150'));
+check('bijna alleen enen ook niet', !lijktOp('ffffffffffffffff:100', 'fffffffffffffffe:100'));
 console.log(`\n${ok} goed, ${fout} fout`);
 process.exit(fout ? 1 : 0);

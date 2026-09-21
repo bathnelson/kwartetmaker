@@ -43,11 +43,19 @@ export function lijktOp(a, b) {
   const [hb, rb] = b.split(':');
   if (!/^[0-9a-f]{16}$/.test(ha) || !/^[0-9a-f]{16}$/.test(hb)) return false;
   if (Math.abs(Number(ra) - Number(rb)) > 3) return false;
-  let x = BigInt('0x' + ha) ^ BigInt('0x' + hb);
-  let verschil = 0;
-  while (x) { verschil += Number(x & 1n); x >>= 1n; }
-  return verschil <= 6;
+  // Een (bijna) effen foto - witte muur, donkere lucht - geeft een vingerafdruk
+  // van bijna alleen nullen of enen. Die zegt te weinig om op te vergelijken.
+  if (!genoegInformatie(ha) || !genoegInformatie(hb)) return false;
+  return bitsVerschil(BigInt('0x' + ha), BigInt('0x' + hb)) <= 6;
 }
+
+function telBits(x) {
+  let n = 0;
+  while (x) { n += Number(x & 1n); x >>= 1n; }
+  return n;
+}
+const bitsVerschil = (a, b) => telBits(a ^ b);
+const genoegInformatie = (hex) => { const n = telBits(BigInt('0x' + hex)); return n >= 6 && n <= 58; };
 
 /** Alle plekken met een foto: kaartjes en de achterkant. */
 function plekken(game) {

@@ -53,5 +53,15 @@ const base = game([q('A', 'Actief'), q('B', 'Muziek'), q('C', '')], [todo('t1', 
 { const l = C(base); l.quartets[0].extra = 'hier'; const r = C(base); r.quartets[0].anders = 'daar';
   const m = mergeGame(base, l, r).quartets[0];
   check('nieuwe velden van beide kanten komen samen', m.extra === 'hier' && m.anders === 'daar'); }
+// fotovoorraad
+{ const foto = (id) => ({ id, photoId: id, toegevoegd: '2026-09-21T10:00:00Z' });
+  const b4 = C(base); b4.voorraad = [foto('f1'), foto('f2')];
+  const l = C(b4); l.voorraad.push(foto('hier'));
+  const r = C(b4); r.voorraad.push(foto('daar')); r.voorraad = r.voorraad.filter((f) => f.id !== 'f2');
+  const ids = mergeGame(b4, l, r).voorraad.map((f) => f.id).join(',');
+  check('voorraad: nieuw aan beide kanten, daar weggegooid', ids === 'f1,daar,hier'); }
+{ const b5 = C(base); b5.voorraad = [{ id: 'f1', photoId: 'f1' }];
+  const l = C(b5); l.voorraad[0].fotoHash = 'abc:100';
+  check('voorraad: vingerafdruk erbij blijft', mergeGame(b5, l, C(b5)).voorraad[0].fotoHash === 'abc:100'); }
 console.log(`\n${ok} goed, ${fout} fout`);
 process.exit(fout ? 1 : 0);

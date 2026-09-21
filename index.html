@@ -14,6 +14,7 @@
   </label>
   <div class="spacer"></div>
   <span id="status" class="status"></span>
+  <button id="openVoorraad" class="btn" aria-pressed="false">Foto's <span id="voorraadAantal" class="badge badge-grijs" hidden></span></button>
   <button id="openTaken" class="btn" aria-pressed="false">Taken <span id="takenAantal" class="badge" hidden></span></button>
   <button id="openShare" class="btn serveronly" hidden>Delen…</button>
   <button id="openPrint" class="btn">Printvellen…</button>
@@ -44,6 +45,17 @@
   </aside>
 
   <section id="editor" class="editor"></section>
+
+  <aside id="voorraad" class="taken voorraad" hidden aria-label="Fotovoorraad">
+    <div class="taken-kop">
+      <h2>Foto's</h2>
+      <button id="sluitVoorraad" class="btn link" type="button" title="Sluiten">✕</button>
+    </div>
+    <p class="hint">Sleep foto's hierheen vanuit Photos, of van een kaartje (aan ⠿).
+      Sleep een foto naar een kaartje om hem te gebruiken.</p>
+    <label class="check voorraad-filter"><input id="voorraadOngebruikt" type="checkbox"> Alleen nog niet gebruikte</label>
+    <div id="voorraadRaster" class="voorraad-raster"></div>
+  </aside>
 
   <aside id="taken" class="taken" hidden aria-label="Takenlijst">
     <div class="taken-kop">

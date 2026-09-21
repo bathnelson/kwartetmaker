@@ -30,6 +30,7 @@ function newGame(n = DEFAULT_QUARTETS) {
     title: 'Mijn kwartet',
     back: { color: '#2f4858', title: '', pattern: 'stippen', photoId: null, focus: { x: .5, y: .5 }, zoom: 1, fit: 'vullen' },
     todos: [],
+    voorraad: [],
     quartets: Array.from({ length: n }, (_, i) => newQuartet(PALETTE[i % PALETTE.length])),
   };
 }
@@ -196,15 +197,6 @@ function setStatus(text) {
   el('#status').textContent = text;
 }
 
-async function pruneOrphans() {
-  // Op de server ruimt api.php zelf op (met een dag vertraging); hier niet,
-  // want een andere computer kan een foto net hebben toegevoegd.
-  if (store.opServer) return;
-  const used = new Set();
-  for (const q of game.quartets) for (const c of q.cards) if (c.photoId) used.add(c.photoId);
-  if (game.back.photoId) used.add(game.back.photoId);
-  for (const id of await store.photoIds()) if (!used.has(id)) await store.deletePhoto(id);
-}
 
 /* ---------------- afbeeldingen ---------------- */
 
@@ -240,7 +232,9 @@ async function importFile(file) {
   const blob = await new Promise((res) => canvas.toBlob(res, 'image/jpeg', 0.92));
   const id = uid();
   await store.putPhoto(id, blob);
-  images.set(id, await createImageBitmap(blob));
+  const bitmap = await createImageBitmap(blob);
+  images.set(id, bitmap);
+  voegToeAanVoorraad(id, vingerafdruk(bitmap));
   return id;
 }
 
@@ -446,6 +440,7 @@ function renderSidebar() {
     });
     list.appendChild(li);
   });
+  renderVoorraad();
   if (filter && !list.children.length) {
     const leeg = document.createElement('li');
     leeg.className = 'lijst-leeg';
@@ -588,8 +583,7 @@ function renderEditor() {
     canvas.addEventListener('click', () => { if (!card.photoId) pickFiles(ci); });
     col.querySelector('[data-act=clear]').addEventListener('click', async () => {
       if (!card.photoId) return;
-      await store.deletePhoto(card.photoId);
-      images.delete(card.photoId);
+      // De foto blijft in de voorraad; alleen van dit kaartje af.
       card.photoId = null;
       card.focus = { x: .5, y: .5 };
       card.zoom = 1;
@@ -603,7 +597,8 @@ function renderEditor() {
 
     wireDrop(preview,
       (files) => { lastFocusedCard = ci; return placeFiles(ci, files); },
-      (van, alleenFoto) => wisselKaartjes(van, ci, alleenFoto));
+      (van, alleenFoto) => wisselKaartjes(van, ci, alleenFoto),
+      (id) => gebruikFoto(ci, id));
 
     // kaartje oppakken aan de greep
     const grip = col.querySelector('[data-act=grip]');
@@ -699,8 +694,7 @@ function maakLeeg(ci) {
   const card = q.cards[ci];
   if (!card.photoId && !card.title.trim()) return;
   const vorige = { title: card.title, photoId: card.photoId, focus: { ...card.focus }, zoom: card.zoom, fit: card.fit, fotoHash: card.fotoHash };
-  // De foto zelf blijft nog even bewaard, zodat "ongedaan maken" kan; ongebruikte
-  // foto's worden later opgeruimd (lokaal bij het opstarten, op de server na een dag).
+  // De foto zelf blijft in de voorraad, dus "ongedaan maken" kan altijd.
   Object.assign(card, { title: '', photoId: null, focus: { x: .5, y: .5 }, zoom: 1, fit: 'vullen' });
   delete card.fotoHash;
   renderEditor();
@@ -756,6 +750,7 @@ async function vulVingerafdrukken() {
     const ids = new Set();
     for (const q of game.quartets) for (const c of q.cards) if (c.photoId && !c.fotoHash) ids.add(c.photoId);
     if (game.back.photoId && !game.back.fotoHash) ids.add(game.back.photoId);
+    for (const f of game.voorraad) if (!f.fotoHash) ids.add(f.id);
     let gedaan = 0;
     for (const id of ids) {
       let img = images.get(id);
@@ -772,6 +767,7 @@ async function vulVingerafdrukken() {
       // Opzoeken in het actuele spel: dat kan intussen door een ander zijn bijgewerkt.
       for (const q of game.quartets) for (const c of q.cards) if (c.photoId === id && !c.fotoHash) c.fotoHash = vd;
       if (game.back.photoId === id && !game.back.fotoHash) game.back.fotoHash = vd;
+      for (const f of game.voorraad) if (f.id === id && !f.fotoHash) f.fotoHash = vd;
       gedaan++;
       if (tijdelijk && store.opServer) await new Promise((r) => setTimeout(r, 250));
     }
@@ -801,7 +797,6 @@ async function placeFiles(startIndex, files) {
     const card = q.cards[i];
     try {
       const id = await importFile(file);
-      if (card.photoId) { await store.deletePhoto(card.photoId); images.delete(card.photoId); }
       card.photoId = id;
       card.focus = { x: .5, y: .5 };
       card.zoom = 1;
@@ -823,12 +818,14 @@ async function placeFiles(startIndex, files) {
 }
 
 const KAART_TYPE = 'application/x-kwartet-kaart';
+const FOTO_TYPE = 'application/x-kwartet-foto';      // een foto uit de voorraad
 const TITEL_TYPE = 'application/x-kwartet-titel';
 
 // onKaart (optioneel): er wordt een ander kaartje uit de app op gesleept.
-function wireDrop(preview, onFiles, onKaart) {
+function wireDrop(preview, onFiles, onKaart, onFoto) {
   let depth = 0;
   const intern = (e) => onKaart && e.dataTransfer.types.includes(KAART_TYPE);
+  const uitVoorraad = (e) => onFoto && e.dataTransfer.types.includes(FOTO_TYPE);
   const alleenTitel = (e) => e.dataTransfer.types.includes(TITEL_TYPE);
   preview.addEventListener('dragenter', (e) => {
     if (alleenTitel(e)) return;
@@ -850,6 +847,7 @@ function wireDrop(preview, onFiles, onKaart) {
     depth = 0;
     preview.classList.remove('over', 'over-wissel');
     const dt = e.dataTransfer;
+    if (uitVoorraad(e)) { onFoto(dt.getData(FOTO_TYPE)); return; }
     if (intern(e)) { onKaart(Number(dt.getData(KAART_TYPE)), e.altKey); return; }
     if (dt.files && dt.files.length) { await onFiles(dt.files); return; }
     const uri = (dt.getData('text/uri-list') || dt.getData('text/plain') || '').split('\n')[0].trim();
@@ -1210,7 +1208,6 @@ async function setBackPhoto(files) {
   if (!file) { toast('Geen afbeelding gevonden in wat je sleepte.'); return; }
   try {
     const id = await importFile(file);
-    if (game.back.photoId) { await store.deletePhoto(game.back.photoId); images.delete(game.back.photoId); }
     game.back.photoId = id;
     game.back.focus = { x: .5, y: .5 };
     game.back.zoom = 1;
@@ -1278,6 +1275,265 @@ function toonNieuweVersie() {
     try { await bewaarNu(); } finally { location.reload(); }
   });
   document.body.appendChild(balk);
+}
+
+/* ---------------- fotovoorraad ---------------- */
+// Alle foto's die ooit zijn geüpload. Sleep ze naar een kaartje, of van een
+// kaartje (aan ⠿) terug de voorraad in. Weggooien gebeurt alleen hier, bewust.
+
+function voegToeAanVoorraad(id, fotoHash) {
+  if (!id || game.voorraad.some((f) => f.id === id)) return false;
+  game.voorraad.push({ id, photoId: id, ...(fotoHash ? { fotoHash } : {}), toegevoegd: new Date().toISOString() });
+  return true;
+}
+
+// Waar staat deze foto? Kaartjes en achterkant.
+function plekkenVanFoto(id) {
+  const uit = [];
+  game.quartets.forEach((q, qi) => q.cards.forEach((c, ci) => { if (c.photoId === id) uit.push({ qi, ci }); }));
+  if (game.back.photoId === id) uit.push({ achter: true });
+  return uit;
+}
+
+// Bij het openen: alles wat al op kaartjes staat of in de opslag zit, erbij.
+async function vulVoorraad() {
+  let erbij = 0;
+  for (const q of game.quartets) for (const c of q.cards) if (voegToeAanVoorraad(c.photoId, c.fotoHash)) erbij++;
+  if (voegToeAanVoorraad(game.back.photoId, game.back.fotoHash)) erbij++;
+  try {
+    for (const id of await store.photoIds()) if (voegToeAanVoorraad(id)) erbij++;
+  } catch (e) { /* lijst niet op te halen: de rest staat er al */ }
+  if (erbij) { save(); renderVoorraad(); }
+}
+
+const verhouding = (hash) => (hash ? Number(hash.split(':')[1]) / 100 : 0);
+
+function gebruikFoto(ci, id) {
+  slepenUitVoorraad = false;                          // de sleepactie is hiermee klaar
+  const q = game.quartets[current];
+  const card = q.cards[ci];
+  const f = game.voorraad.find((x) => x.id === id);
+  if (!f || card.photoId === id) return;
+  card.photoId = id;
+  card.focus = { x: .5, y: .5 };
+  card.zoom = 1;
+  const r = verhouding(f.fotoHash);
+  card.fit = r && r < 0.95 ? 'passend' : 'vullen';     // staand -> hele foto
+  if (f.fotoHash) card.fotoHash = f.fotoHash; else delete card.fotoHash;
+  renderEditor();
+  renderSidebar();
+  save();
+  ensureImage(id).then(() => { if (game.quartets[current] === q) repaintQuartet(); });
+  meldDubbel([ci]);
+}
+
+function gebruikFotoAchterkant(id) {
+  slepenUitVoorraad = false;
+  const f = game.voorraad.find((x) => x.id === id);
+  if (!f) return;
+  Object.assign(game.back, { photoId: id, focus: { x: .5, y: .5 }, zoom: 1, fit: 'vullen' });
+  if (f.fotoHash) game.back.fotoHash = f.fotoHash; else delete game.back.fotoHash;
+  el('#backZoom').value = 1;
+  updateBackControls();
+  ensureImage(id).then(paintBackPreview);
+  renderVoorraad();
+  save();
+}
+
+function haalVanKaartje(ci) {
+  const q = game.quartets[current];
+  const card = q.cards[ci];
+  if (!card.photoId) return;
+  const vorige = { photoId: card.photoId, focus: { ...card.focus }, zoom: card.zoom, fit: card.fit, fotoHash: card.fotoHash };
+  voegToeAanVoorraad(card.photoId, card.fotoHash);
+  Object.assign(card, { photoId: null, focus: { x: .5, y: .5 }, zoom: 1, fit: 'vullen' });
+  delete card.fotoHash;
+  renderEditor();
+  renderSidebar();
+  save();
+  toast(`Foto van kaartje ${ci + 1} terug in de voorraad.`, 6000, {
+    tekst: 'Ongedaan maken',
+    doe: () => {
+      const qq = game.quartets.find((x) => x.id === q.id);
+      if (!qq) return;
+      Object.assign(qq.cards[ci], vorige);
+      if (!vorige.fotoHash) delete qq.cards[ci].fotoHash;
+      if (game.quartets[current] === qq) renderEditor();
+      renderSidebar();
+      save();
+    },
+  });
+}
+
+async function voegBestandenToe(files) {
+  const lijst = [...files].filter((f) => f.type.startsWith('image/') || /\.(heic|heif)$/i.test(f.name));
+  if (!lijst.length) { toast('Geen afbeelding gevonden in wat je sleepte.'); return; }
+  let gelukt = 0;
+  for (const [n, file] of lijst.entries()) {
+    toast(`Foto's toevoegen… ${n + 1} van ${lijst.length}`, 60000);
+    try { await importFile(file); gelukt++; } catch (err) { /* melding hieronder */ }
+    renderVoorraad();
+  }
+  save();
+  toast(gelukt === lijst.length
+    ? `${gelukt} foto${gelukt === 1 ? '' : "'s"} in de voorraad gezet.`
+    : `${gelukt} van de ${lijst.length} foto's in de voorraad gezet; de rest kon niet gelezen worden (HEIC werkt in Safari).`, 6000);
+}
+
+async function gooiWeg(id) {
+  if (plekkenVanFoto(id).length) return;               // staat nog op een kaartje
+  if (!confirm('Deze foto definitief weggooien? Hij verdwijnt dan ook uit de voorraad.')) return;
+  game.voorraad = game.voorraad.filter((f) => f.id !== id);
+  images.delete(id);
+  duimnagels.delete(id);
+  await store.deletePhoto(id);                          // op de server ruimt api.php hem later op
+  renderVoorraad();
+  save();
+}
+
+/* ----- kleine plaatjes voor de voorraad ----- */
+
+const duimnagels = new Map();            // photoId -> data-URL van ca. 160 px
+let duimRij = Promise.resolve();
+
+async function maakDuimnagel(id) {
+  let img = images.get(id);
+  let tijdelijk = null;
+  if (!img) {
+    const blob = await store.getPhoto(id);
+    if (!blob) return null;
+    img = tijdelijk = await createImageBitmap(blob);
+  }
+  const s = Math.min(1, 160 / Math.max(img.width, img.height));
+  const c = document.createElement('canvas');
+  c.width = Math.round(img.width * s);
+  c.height = Math.round(img.height * s);
+  c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+  if (tijdelijk && tijdelijk.close) tijdelijk.close();
+  return c.toDataURL('image/jpeg', 0.8);
+}
+
+// Eén voor één ophalen, zodat de host niet gaat afremmen.
+function laadDuimnagel(id) {
+  if (duimnagels.has(id)) return;
+  duimRij = duimRij.then(async () => {
+    if (duimnagels.has(id)) return;
+    const onbekend = !images.has(id);
+    const url = await maakDuimnagel(id);
+    if (!url) return;
+    duimnagels.set(id, url);
+    document.querySelectorAll(`.voorraad-foto[data-id="${id}"] img`).forEach((i) => { i.src = url; });
+    if (onbekend && store.opServer) await new Promise((r) => setTimeout(r, 120));
+  }).catch(() => {});
+}
+
+const duimKijker = 'IntersectionObserver' in window ? new IntersectionObserver((items) => {
+  for (const item of items) {
+    if (!item.isIntersecting) continue;
+    duimKijker.unobserve(item.target);
+    laadDuimnagel(item.target.dataset.id);
+  }
+}, { rootMargin: '200px' }) : null;
+
+/* ----- tekenen ----- */
+
+let slepenUitVoorraad = false;
+
+function renderVoorraad() {
+  if (!game) return;
+  const vrij = game.voorraad.filter((f) => !plekkenVanFoto(f.id).length).length;
+  el('#voorraadAantal').textContent = vrij;
+  el('#voorraadAantal').hidden = !vrij;
+  el('#openVoorraad').title = `${game.voorraad.length} foto's, waarvan ${vrij} nog niet op een kaartje`;
+  if (el('#voorraad').hidden || slepenUitVoorraad) return;   // niet ombouwen onder een sleepactie
+
+  const alleenVrij = el('#voorraadOngebruikt').checked;
+  const raster = el('#voorraadRaster');
+  raster.innerHTML = '';
+  const lijst = [...game.voorraad]
+    .sort((a, b) => String(b.toegevoegd || '').localeCompare(String(a.toegevoegd || '')))
+    .filter((f) => !alleenVrij || !plekkenVanFoto(f.id).length);
+  if (!lijst.length) {
+    raster.innerHTML = `<p class="voorraad-leeg">${game.voorraad.length
+      ? 'Alle foto\'s staan op een kaartje.'
+      : 'Nog geen foto\'s. Sleep ze hierheen vanuit Photos, of op een kaartje.'}</p>`;
+    return;
+  }
+  for (const f of lijst) {
+    const plekken = plekkenVanFoto(f.id);
+    const vak = document.createElement('div');
+    vak.className = 'voorraad-foto' + (plekken.length ? ' gebruikt' : '');
+    vak.dataset.id = f.id;
+    vak.draggable = true;
+    vak.innerHTML = '<img alt="" draggable="false">';
+    const img = vak.querySelector('img');
+    if (duimnagels.has(f.id)) img.src = duimnagels.get(f.id);
+    else if (duimKijker) duimKijker.observe(vak); else laadDuimnagel(f.id);
+
+    if (plekken.length) {
+      const label = document.createElement('span');
+      label.className = 'waar';
+      label.textContent = plekken.map((p) => (p.achter ? 'achter' : p.qi + 1)).join(', ');
+      const q = !plekken[0].achter && game.quartets[plekken[0].qi];
+      if (q) label.style.background = q.color;
+      vak.title = 'Staat op ' + plekken.map((p) => beschrijfPlek(game, p)).join(', ');
+      vak.appendChild(label);
+    } else {
+      vak.title = 'Nog niet gebruikt. Sleep naar een kaartje.';
+      const weg = document.createElement('button');
+      weg.type = 'button';
+      weg.className = 'weg';
+      weg.title = 'Foto definitief weggooien';
+      weg.textContent = '✕';
+      weg.addEventListener('click', (e) => { e.stopPropagation(); gooiWeg(f.id); });
+      vak.appendChild(weg);
+    }
+
+    vak.addEventListener('dragstart', (e) => {
+      slepenUitVoorraad = true;
+      e.dataTransfer.setData(FOTO_TYPE, f.id);
+      e.dataTransfer.effectAllowed = 'copy';
+      if (img.src) e.dataTransfer.setDragImage(img, img.width / 2, img.height / 2);
+      ensureImage(f.id);                               // alvast ophalen voor het kaartje
+    });
+    vak.addEventListener('dragend', () => { slepenUitVoorraad = false; renderVoorraad(); });
+    raster.appendChild(vak);
+  }
+}
+
+function zetVoorraadOpen(open) {
+  if (open && !el('#taken').hidden) zetTakenOpen(false);   // één paneel tegelijk
+  el('#voorraad').hidden = !open;
+  el('#openVoorraad').setAttribute('aria-pressed', String(open));
+  try { localStorage.setItem('kwartet-voorraad', open ? '1' : '0'); } catch (e) { /* */ }
+  renderVoorraad();
+  requestAnimationFrame(repaintQuartet);
+}
+
+function wireVoorraad() {
+  el('#openVoorraad').addEventListener('click', () => zetVoorraadOpen(el('#voorraad').hidden));
+  el('#sluitVoorraad').addEventListener('click', () => zetVoorraadOpen(false));
+  el('#voorraadOngebruikt').addEventListener('change', renderVoorraad);
+
+  // Het hele paneel is een landingsplek: bestanden uit Photos, of een kaartje (⠿).
+  const paneel = el('#voorraad');
+  let diepte = 0;
+  const past = (e) => e.dataTransfer.types.includes('Files') || e.dataTransfer.types.includes(KAART_TYPE);
+  paneel.addEventListener('dragenter', (e) => { if (!past(e)) return; e.preventDefault(); diepte++; paneel.classList.add('over'); });
+  paneel.addEventListener('dragover', (e) => { if (!past(e)) return; e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; });
+  paneel.addEventListener('dragleave', () => { if (--diepte <= 0) { diepte = 0; paneel.classList.remove('over'); } });
+  paneel.addEventListener('drop', (e) => {
+    if (!past(e)) return;
+    e.preventDefault();
+    diepte = 0;
+    paneel.classList.remove('over');
+    if (e.dataTransfer.types.includes(KAART_TYPE)) haalVanKaartje(Number(e.dataTransfer.getData(KAART_TYPE)));
+    else if (e.dataTransfer.files.length) voegBestandenToe(e.dataTransfer.files);
+  });
+
+  let open = false;
+  try { open = localStorage.getItem('kwartet-voorraad') === '1'; } catch (e) { /* */ }
+  if (open) zetVoorraadOpen(true); else renderVoorraad();
 }
 
 /* ---------------- takenlijst ---------------- */
@@ -1383,6 +1639,7 @@ function bewerkTaak(li, zoek) {
 }
 
 function zetTakenOpen(open) {
+  if (open && !el('#voorraad').hidden) zetVoorraadOpen(false);   // één paneel tegelijk
   el('#taken').hidden = !open;
   el('#openTaken').setAttribute('aria-pressed', String(open));
   try { localStorage.setItem('kwartet-taken', open ? '1' : '0'); } catch (e) { /* */ }
@@ -1498,7 +1755,7 @@ function addQuartet() {
 async function deleteQuartet(qi) {
   const q = game.quartets[qi];
   if (!confirm(`Kwartet ${qi + 1}${q.theme ? ` "${q.theme}"` : ''} verwijderen?`)) return;
-  for (const c of q.cards) if (c.photoId) { await store.deletePhoto(c.photoId); images.delete(c.photoId); }
+  // Foto's blijven in de voorraad.
   game.quartets.splice(qi, 1);
   if (!game.quartets.length) game.quartets.push(newQuartet());
   save();
@@ -1535,6 +1792,11 @@ function normalizeGame(raw) {
         wanneer: typeof t.wanneer === 'string' ? t.wanneer : '',
         kwartetId: typeof t.kwartetId === 'string' ? t.kwartetId : null,
       })),
+    // Fotovoorraad: elke foto die ooit is geüpload. Met "photoId" erin, zodat
+    // api.php (dat ongebruikte foto's opruimt) ze als in gebruik ziet.
+    voorraad: [...new Map((Array.isArray(g.voorraad) ? g.voorraad : [])
+      .filter((f) => f && typeof f.photoId === 'string')
+      .map((f) => [f.photoId, { ...f, id: f.photoId }])).values()],
     quartets: (Array.isArray(g.quartets) ? g.quartets : []).map((q) => ({
       ...q,
       id: (q && q.id) || uid(),
@@ -1577,6 +1839,7 @@ async function makeBackup() {
   const ids = new Set();
   for (const q of game.quartets) for (const c of q.cards) if (c.photoId) ids.add(c.photoId);
   if (game.back.photoId) ids.add(game.back.photoId);
+  for (const f of game.voorraad) ids.add(f.id);
   let n = 0;
   for (const id of ids) {
     n++;
@@ -1609,7 +1872,7 @@ async function restoreBackup(file) {
   await persistForced();
   await Promise.all(game.quartets.flatMap((q) => q.cards.map((c) => ensureImage(c.photoId))));
   await ensureImage(game.back.photoId);
-  await pruneOrphans();
+  await vulVoorraad();
 
   el('#gameTitle').value = game.title;
   select(0);
@@ -1672,13 +1935,14 @@ async function init() {
   await ensureImage(game.back.photoId);
   // Alleen opruimen als er echt een spel geladen is: anders zouden we bij een
   // hapering alle foto's van de server weggooien.
-  if (opgeslagen) await pruneOrphans();
+  await vulVoorraad();
 
   select(0);
   setStatus('Bewaard ✓');
   if (store.opServer) { startSync(); wireShareDialog(); }
   setTimeout(vulVingerafdrukken, 1500);
   wireTaken();
+  wireVoorraad();
   wireVersieCheck();
   el('#sorteer').addEventListener('click', () => {
     sorteerAZ = !sorteerAZ;
@@ -1717,8 +1981,6 @@ async function init() {
   el('#backPick').addEventListener('click', () => { pickTarget = 'back'; el('#filePicker').value = ''; el('#filePicker').click(); });
   el('#backClear').addEventListener('click', async () => {
     if (!game.back.photoId) return;
-    await store.deletePhoto(game.back.photoId);
-    images.delete(game.back.photoId);
     game.back.photoId = null;
     game.back.focus = { x: .5, y: .5 };
     game.back.zoom = 1;
@@ -1729,7 +1991,7 @@ async function init() {
     paintBackPreview();
     save();
   });
-  wireDrop(el('#backPreview').parentElement, setBackPhoto);
+  wireDrop(el('#backPreview').parentElement, setBackPhoto, null, gebruikFotoAchterkant);
   el('#backPreview').addEventListener('click', () => { if (!game.back.photoId) el('#backPick').click(); });
   wirePan(el('#backPreview'), el('#backPreview').parentElement, {
     model: () => game.back,
