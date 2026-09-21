@@ -301,7 +301,8 @@ met veel foto's, dan wacht de app even en probeert het opnieuw.
 *Printvellen…* in de balk bovenin maakt één PDF met alle kaartjes:
 
 - 9 kaartjes per A4 op ware grootte (63 × 88 mm), met snijlijnen in de marge.
-- De achterkant ontwerp je in hetzelfde venster: tekst, kleur en motief, of
+- De achterkant ontwerp je in hetzelfde venster: tekst (of zonder tekst, met
+  het vinkje *Tekst op de achterkant*), kleur en motief, of
   sleep er een eigen foto op (slepen in het kaartje verschuift de uitsnede,
   de schuif zoomt in). Die achterkant is voor alle kaartjes gelijk - anders zie
   je van achteren al welk kwartet het is. De afbeelding loopt door tot de

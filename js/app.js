@@ -44,7 +44,7 @@ function style(q) {
 function backStyle() {
   const b = game.back;
   return {
-    color: b.color, title: b.title || game.title, pattern: b.pattern,
+    color: b.color, title: b.tekstUit ? '' : (b.title || game.title), pattern: b.pattern,
     image: b.photoId ? gedraaid(images.get(b.photoId), draaiVan(b.photoId)) : null,
     focus: b.focus, zoom: b.zoom, fit: b.fit,
     ink: inkOn(b.color), soft: mix(b.color, inkOn(b.color), 0.16),
@@ -162,6 +162,8 @@ function applyGame(next) {
   ensureQuartetImages(q).then(() => { if (game.quartets[current] === q) repaintQuartet(); });
   if (el('#printDialog').open) {
     if (document.activeElement !== el('#backTitle')) el('#backTitle').value = game.back.title;
+    el('#backTekstAan').checked = !game.back.tekstUit;
+    el('#backTitle').disabled = !!game.back.tekstUit;
     el('#backColor').value = game.back.color;
     el('#backPattern').value = game.back.pattern;
     el('#backZoom').value = game.back.zoom;
@@ -1234,6 +1236,8 @@ async function setBackPhoto(files) {
 
 function openPrintDialog() {
   el('#backTitle').value = game.back.title;
+  el('#backTekstAan').checked = !game.back.tekstUit;
+  el('#backTitle').disabled = !!game.back.tekstUit;
   el('#backTitle').placeholder = game.title || 'Naam van het spel';
   el('#backColor').value = game.back.color;
   el('#backPattern').value = game.back.pattern;
@@ -2023,6 +2027,12 @@ async function init() {
   el('#exportAll').addEventListener('click', exportAll);
   el('#openPrint').addEventListener('click', openPrintDialog);
   el('#backTitle').addEventListener('input', (e) => { game.back.title = e.target.value; paintBackPreview(); save(); });
+  el('#backTekstAan').addEventListener('change', (e) => {
+    if (e.target.checked) delete game.back.tekstUit; else game.back.tekstUit = true;
+    el('#backTitle').disabled = !e.target.checked;
+    paintBackPreview();
+    save();
+  });
   el('#backColor').addEventListener('input', (e) => { game.back.color = e.target.value; paintBackPreview(); save(); });
   el('#backPattern').addEventListener('change', (e) => { game.back.pattern = e.target.value; paintBackPreview(); save(); });
   el('#backZoom').addEventListener('input', (e) => { game.back.zoom = Number(e.target.value); paintBackPreview(); save(); });

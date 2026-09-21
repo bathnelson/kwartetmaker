@@ -110,7 +110,7 @@ function achterModel() {
   const b = spel.back || {};
   const kleur = b.color || '#2f4858';
   return {
-    color: kleur, title: b.title || spel.title, pattern: b.pattern,
+    color: kleur, title: b.tekstUit ? '' : (b.title || spel.title), pattern: b.pattern,
     image: beeld(b.photoId), focus: b.focus, zoom: b.zoom, fit: b.fit,
     ink: inkOn(kleur), soft: mix(kleur, inkOn(kleur), 0.16),
   };

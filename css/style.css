@@ -450,3 +450,5 @@ main { flex: 1; display: flex; min-height: 0; position: relative; }
 }
 .voorraad-foto:hover .draai { display: block; }
 @media (hover: none) { .voorraad-foto .draai { display: block; } }
+
+.dialog-form input:disabled { opacity: .45; }
