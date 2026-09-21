@@ -53,3 +53,30 @@ body {
   border-radius: 14px; box-shadow: 0 10px 40px rgba(0,0,0,.35); background: #fff;
 }
 .groot-hint { margin: 0; color: rgba(255,255,255,.7); font-size: 13px; }
+
+/* ---------- filter op ja / misschien / nee ---------- */
+:root { --ja: #2e9e44; --misschien: #d98200; --nee: #d0392b; }
+.filters { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.filters .filter {
+  border: 1px solid var(--line, #dfe5e9); background: #fff; color: var(--ink);
+  border-radius: 999px; padding: 6px 13px; font: inherit; font-size: 13px; font-weight: 700;
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+.filters .filter.alles { font-weight: 400; }
+.filters .k-ja { color: var(--ja); }
+.filters .k-misschien { color: var(--misschien); }
+.filters .k-nee { color: var(--nee); }
+.filters .k-geen { color: #9aa3ab; }
+.filters .filter[aria-pressed="true"] { color: #fff; border-color: transparent; }
+.filters .k-ja[aria-pressed="true"] { background: var(--ja); }
+.filters .k-misschien[aria-pressed="true"] { background: var(--misschien); }
+.filters .k-nee[aria-pressed="true"] { background: var(--nee); }
+.filters .k-geen[aria-pressed="true"] { background: #9aa3ab; }
+.filters .alles[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); }
+
+.kwartet h2 .keuze { font-weight: 800; margin-left: 2px; }
+.kwartet h2 .keuze.k-ja { color: var(--ja); }
+.kwartet h2 .keuze.k-misschien { color: var(--misschien); }
+.kwartet h2 .keuze.k-nee { color: var(--nee); }
+.kwartet.nee { opacity: .45; }
+.kwartet.nee h2 .naam { text-decoration: line-through; }

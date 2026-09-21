@@ -157,6 +157,11 @@ hele kwartet kan bekijken, ook op een telefoon, zonder wachtwoord. Die pagina
 (`bekijk.html`) heeft geen bewerk-, download- of printknoppen; tik op een kaartje
 om hem groot te zien. Wijzigingen verschijnen er binnen een paar seconden.
 
+Op die pagina staat achter elke kwartetnaam het teken ✓, ? of ✗, en bovenaan
+knoppen om te filteren op ja, misschien, nee of nog niet gekozen. Kwartetten
+met ✗ worden gedimd. Dat filter is alleen van de kijker; niemand verandert er
+iets mee aan het spel.
+
 De link bevat een lange geheime code. De server staat met die code alleen
 lezen toe: opslaan, foto's wijzigen en links beheren blijven achter je
 wachtwoord. Met *Nieuwe link* maak je een andere code (de oude werkt dan niet

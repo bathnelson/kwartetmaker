@@ -37,6 +37,51 @@ async function laadFoto(id) {
 
 const gebruikt = (q) => q.theme.trim() || q.cards.some((c) => (c.title || '').trim() || c.photoId);
 
+/* ---------------- filter op ja / misschien / nee ---------------- */
+// Alleen voor wie kijkt: het staat in deze browser, niet in het spel.
+
+const KEUZE_TEKEN = { ja: '✓', misschien: '?', nee: '✗', geen: '○' };
+const KEUZE_NAAM = { ja: 'ja', misschien: 'misschien', nee: 'nee', geen: 'nog niet gekozen' };
+let filter = null;
+try {
+  const bewaard = localStorage.getItem('kwartet-bekijk-filter');
+  if (KEUZE_TEKEN[bewaard]) filter = bewaard;
+} catch (e) { /* privévenster */ }
+
+function zetFilter(keuze) {
+  filter = filter === keuze ? null : keuze;
+  try {
+    if (filter) localStorage.setItem('kwartet-bekijk-filter', filter);
+    else localStorage.removeItem('kwartet-bekijk-filter');
+  } catch (e) { /* */ }
+  bouw();
+  window.scrollTo(0, 0);
+}
+
+function bouwFilters(alle) {
+  const balk = el('#filters');
+  balk.innerHTML = '';
+  const tel = { ja: 0, misschien: 0, nee: 0, geen: 0 };
+  for (const { q } of alle) tel[KEUZE_TEKEN[q.keuze] ? q.keuze : 'geen']++;
+  if (!tel.ja && !tel.misschien && !tel.nee) return;        // niemand heeft iets gekozen
+
+  const maak = (keuze, tekst, uitleg) => {
+    const knop = document.createElement('button');
+    knop.type = 'button';
+    knop.className = `filter${keuze ? ` k-${keuze}` : ' alles'}`;
+    knop.textContent = tekst;
+    knop.title = uitleg;
+    knop.setAttribute('aria-pressed', String(filter === keuze));
+    knop.addEventListener('click', () => zetFilter(keuze));
+    balk.appendChild(knop);
+  };
+  maak(null, `Alles ${alle.length}`, 'Alle kwartetten tonen');
+  for (const keuze of ['ja', 'misschien', 'nee', 'geen']) {
+    if (!tel[keuze]) continue;
+    maak(keuze, `${KEUZE_TEKEN[keuze]} ${tel[keuze]}`, `Alleen ${KEUZE_NAAM[keuze]} tonen`);
+  }
+}
+
 /* ---------------- tekenen ---------------- */
 
 function stijl(q) {
@@ -103,20 +148,31 @@ function bouw() {
   const main = el('#kwartetten');
   main.innerHTML = '';
 
-  const zichtbaar = spel.quartets.map((q, qi) => ({ q, qi })).filter(({ q }) => gebruikt(q));
-  if (!zichtbaar.length) {
+  const alle = spel.quartets.map((q, qi) => ({ q, qi })).filter(({ q }) => gebruikt(q));
+  bouwFilters(alle);
+  const zichtbaar = alle.filter(({ q }) => !filter || (KEUZE_TEKEN[q.keuze] ? q.keuze : 'geen') === filter);
+  if (!alle.length) {
     main.innerHTML = '<p class="leeg">Er staat nog niets in dit kwartet.</p>';
+  } else if (!zichtbaar.length) {
+    main.innerHTML = `<p class="leeg">Geen kwartetten met ${KEUZE_NAAM[filter]}.</p>`;
   }
 
   for (const { q, qi } of zichtbaar) {
     const sectie = document.createElement('section');
-    sectie.className = 'kwartet';
+    sectie.className = 'kwartet' + (q.keuze === 'nee' ? ' nee' : '');
     sectie.dataset.i = qi;
     const kop = document.createElement('h2');
     kop.innerHTML = '<span class="stip"></span><span class="nr"></span><span class="naam"></span>';
     kop.querySelector('.stip').style.background = q.color;
     kop.querySelector('.nr').textContent = qi + 1;
     kop.querySelector('.naam').textContent = q.theme.trim() || 'zonder thema';
+    if (KEUZE_TEKEN[q.keuze]) {
+      const keuze = document.createElement('span');
+      keuze.className = `keuze k-${q.keuze}`;
+      keuze.textContent = KEUZE_TEKEN[q.keuze];
+      keuze.title = KEUZE_NAAM[q.keuze];
+      kop.appendChild(keuze);
+    }
     const rij = document.createElement('div');
     rij.className = 'kaarten';
     for (let ci = 0; ci < 4; ci++) {
@@ -137,8 +193,8 @@ function bouw() {
     kijker.observe(sectie);
   }
 
-  const kaartjes = zichtbaar.length * 4;
-  el('#info').textContent = `${zichtbaar.length} kwartet${zichtbaar.length === 1 ? '' : 'ten'} · ${kaartjes} kaartjes`;
+  el('#info').textContent = `${alle.length} kwartet${alle.length === 1 ? '' : 'ten'} · ${alle.length * 4} kaartjes`
+    + (filter ? ` · getoond: ${zichtbaar.length}` : '');
   hertekenAlles();
 }
 
