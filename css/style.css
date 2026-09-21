@@ -359,7 +359,16 @@ main { flex: 1; display: flex; min-height: 0; position: relative; }
 .k-ja-tekst { color: var(--ja); font-weight: 700; }
 .k-misschien-tekst { color: var(--misschien); font-weight: 700; }
 .k-nee-tekst { color: var(--nee); font-weight: 700; }
-.keuze-teller { display: flex; gap: 10px; padding: 0 14px 6px 12px; font-size: 11.5px; }
+.keuze-teller { display: flex; flex-wrap: wrap; gap: 4px; padding: 0 10px 6px; font-size: 11.5px; }
+.keuze-teller .chip {
+  border: 1px solid transparent; background: none; border-radius: 6px;
+  padding: 1px 5px; cursor: pointer; font: inherit; font-weight: 700;
+}
+.keuze-teller .chip:hover { background: #eef1f3; }
+.keuze-teller .chip[aria-pressed="true"] { border-color: currentColor; background: #fff; }
+.keuze-teller .chip.alles { color: var(--muted); font-weight: 400; text-decoration: underline; }
+.keuze-teller .chip.k-geen-tekst { color: #aab3ba; }
+.quartet-list .lijst-leeg { color: var(--muted); font-size: 12px; padding: 10px; font-style: italic; }
 .keuze-teller .muted { font-size: 11px; }
 .keuze-teller .te-veel { color: #fff; background: var(--nee); border-radius: 5px; padding: 0 5px; }
 
@@ -388,3 +397,5 @@ main { flex: 1; display: flex; min-height: 0; position: relative; }
 .keuze-knoppen .k-nee[aria-pressed="true"] { background: var(--nee); color: #fff; }
 .cards.nee { opacity: .4; filter: grayscale(.6); transition: opacity .15s; }
 .cards.nee:hover { opacity: .75; }
+
+.k-geen-tekst { color: #aab3ba; font-weight: 700; }

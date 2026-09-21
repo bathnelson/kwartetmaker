@@ -230,6 +230,10 @@ wachtwoord - anders als tekst uitserveren.
   hoeveel er op ✓ staan van de 15; zijn het er meer, dan kleurt de teller rood.
   Bij printen worden kwartetten met ✗ standaard overgeslagen (uit te zetten in
   het printvenster).
+- **Filteren**: de tellers boven de lijst zijn knoppen. Klik op ✓, ?, ✗ of ○
+  (nog niet gekozen) om alleen die kwartetten te zien, en nog eens (of op
+  *toon alles*) om weer alles te tonen. Het filter geldt alleen voor jouw
+  lijst, niet voor het spel.
 - **Zoeken**: A–Z boven de lijst sorteert de kwartetten op naam. Alleen de lijst:
   de nummers op de kaartjes blijven gelijk, zodat geprinte kaartjes kloppen.
 - **Takenlijst**: *Taken* bovenin toont of verbergt een lijst voor dingen die

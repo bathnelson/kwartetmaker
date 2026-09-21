@@ -329,21 +329,61 @@ function toonKeuzeInEditor(q) {
   if (kaarten) kaarten.classList.toggle('nee', q.keuze === 'nee');
 }
 
+// De tellers zijn tegelijk het filter: klik op ✓, ?, ✗ of ○ om alleen die
+// kwartetten te zien, en nog eens om weer alles te tonen.
+let filter = null;
+try {
+  const bewaard = localStorage.getItem('kwartet-filter');
+  if (['ja', 'misschien', 'nee', 'geen'].includes(bewaard)) filter = bewaard;
+} catch (e) { /* */ }
+
+function zetFilter(keuze) {
+  filter = filter === keuze ? null : keuze;
+  try {
+    if (filter) localStorage.setItem('kwartet-filter', filter);
+    else localStorage.removeItem('kwartet-filter');
+  } catch (e) { /* */ }
+  renderSidebar();
+}
+
 function renderKeuzeTeller() {
-  const tel = { ja: 0, misschien: 0, nee: 0 };
-  for (const q of game.quartets) if (tel[q.keuze] !== undefined) tel[q.keuze]++;
+  const tel = { ja: 0, misschien: 0, nee: 0, geen: 0 };
+  for (const q of game.quartets) tel[q.keuze || 'geen']++;
   const teller = el('#keuzeTeller');
+  teller.innerHTML = '';
   if (!tel.ja && !tel.misschien && !tel.nee) {
     teller.innerHTML = '<span class="muted">Klik op ○ om ja, misschien of nee te kiezen</span>';
     return;
   }
+
   const teVeel = tel.ja - MAX_BESTELLEN;
-  teller.innerHTML = `<span class="k-ja-tekst${teVeel > 0 ? ' te-veel' : ''}">✓ ${tel.ja}/${MAX_BESTELLEN}</span>
-    <span class="k-misschien-tekst">? ${tel.misschien}</span>
-    <span class="k-nee-tekst">✗ ${tel.nee}</span>`;
-  teller.title = teVeel > 0
-    ? `${teVeel} kwartet${teVeel === 1 ? '' : 'ten'} te veel op ja: er kunnen er ${MAX_BESTELLEN} besteld worden`
-    : `${tel.ja} op ja van de ${MAX_BESTELLEN} die besteld kunnen worden`;
+  const chips = [
+    ['ja', `✓ ${tel.ja}/${MAX_BESTELLEN}`, teVeel > 0
+      ? `${teVeel} te veel op ja: er kunnen er ${MAX_BESTELLEN} besteld worden`
+      : `${tel.ja} op ja van de ${MAX_BESTELLEN} die besteld kunnen worden`],
+    ['misschien', `? ${tel.misschien}`, `${tel.misschien} op misschien`],
+    ['nee', `✗ ${tel.nee}`, `${tel.nee} op nee`],
+    ['geen', `○ ${tel.geen}`, `${tel.geen} nog niet gekozen`],
+  ];
+  for (const [keuze, tekst, uitleg] of chips) {
+    if (keuze === 'geen' && !tel.geen) continue;
+    const knop = document.createElement('button');
+    knop.type = 'button';
+    knop.className = `chip k-${keuze}-tekst${keuze === 'ja' && teVeel > 0 ? ' te-veel' : ''}`;
+    knop.textContent = tekst;
+    knop.setAttribute('aria-pressed', String(filter === keuze));
+    knop.title = `${uitleg}. Klik om ${filter === keuze ? 'weer alles te tonen' : 'alleen deze te tonen'}.`;
+    knop.addEventListener('click', () => zetFilter(keuze));
+    teller.appendChild(knop);
+  }
+  if (filter) {
+    const alles = document.createElement('button');
+    alles.type = 'button';
+    alles.className = 'chip alles';
+    alles.textContent = 'toon alles';
+    alles.addEventListener('click', () => zetFilter(null));
+    teller.appendChild(alles);
+  }
 }
 
 /* ---------------- sidebar ---------------- */
@@ -366,7 +406,8 @@ let sorteerAZ = false;
 try { sorteerAZ = localStorage.getItem('kwartet-sortering') === 'az'; } catch (e) { /* */ }
 
 function lijstVolgorde() {
-  const idx = game.quartets.map((_, i) => i);
+  let idx = game.quartets.map((_, i) => i);
+  if (filter) idx = idx.filter((i) => (game.quartets[i].keuze || 'geen') === filter);
   if (!sorteerAZ) return idx;
   const naam = (i) => game.quartets[i].theme.trim();
   return idx.sort((a, b) => {
@@ -405,6 +446,12 @@ function renderSidebar() {
     });
     list.appendChild(li);
   });
+  if (filter && !list.children.length) {
+    const leeg = document.createElement('li');
+    leeg.className = 'lijst-leeg';
+    leeg.textContent = 'Geen kwartetten met dit filter.';
+    list.appendChild(leeg);
+  }
   renderKeuzeTeller();
   const done = game.quartets.filter((q) => cardsDone(q) === 4).length;
   el('#progress').textContent = `${done}/${game.quartets.length}`;
