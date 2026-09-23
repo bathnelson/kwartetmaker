@@ -249,6 +249,12 @@ wachtwoord - anders als tekst uitserveren.
   hoeveel er op ✓ staan van de 15; zijn het er meer, dan kleurt de teller rood.
   Bij printen worden kwartetten met ✗ standaard overgeslagen (uit te zetten in
   het printvenster).
+- **Hernummeren**: de knop onderin de zijbalk zet de kwartetten echt op
+  volgorde: eerst ✓ (1 tot en met 15), dan ?, dan de kwartetten zonder keuze,
+  en ✗ als laatste. Binnen een groep blijft de onderlinge volgorde gelijk. De
+  nummers op de kaartjes veranderen dus mee; al geprinte kaartjes kloppen
+  daarna niet meer. Er komt eerst een bevestiging, en je kunt het meteen
+  ongedaan maken.
 - **Filteren**: de tellers boven de lijst zijn knoppen. Klik op ✓, ?, ✗ of ○
   (nog niet gekozen) om alleen die kwartetten te zien, en nog eens (of op
   *toon alles*) om weer alles te tonen. Het filter geldt alleen voor jouw

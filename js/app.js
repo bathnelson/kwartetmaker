@@ -342,6 +342,45 @@ function zetFilter(keuze) {
   renderSidebar();
 }
 
+// Volgorde bij hernummeren: eerst ja, dan misschien, dan zonder keuze, dan nee.
+const KEUZE_RANG = { ja: 0, misschien: 1, nee: 3 };
+const rangVan = (q) => (q.keuze in KEUZE_RANG ? KEUZE_RANG[q.keuze] : 2);
+
+function hernummer() {
+  if (!game.quartets.some((q) => KEUZES[q.keuze])) {
+    toast('Kies eerst bij een paar kwartetten ja, misschien of nee.', 5000);
+    return;
+  }
+  const tel = { ja: 0, misschien: 0, nee: 0, geen: 0 };
+  for (const q of game.quartets) tel[q.keuze || 'geen']++;
+  if (!confirm('De kwartetten krijgen een nieuwe volgorde: eerst ja, dan misschien, '
+    + 'dan zonder keuze, en nee als laatste.\n\nDe nummers staan op de kaartjes, dus die '
+    + 'veranderen mee. Al geprinte kaartjes kloppen daarna niet meer. Doorgaan?')) return;
+
+  const oudeVolgorde = new Map(game.quartets.map((q, i) => [q.id, i]));
+  const huidigId = game.quartets[current] && game.quartets[current].id;
+  const opVolgorde = (lijst, sleutel) => [...lijst].sort((a, b) => sleutel(a) - sleutel(b));
+
+  game.quartets = opVolgorde(game.quartets.map((q, i) => ({ q, i })),
+    (x) => rangVan(x.q) * 10000 + x.i).map((x) => x.q);     // gelijke keuze: eigen volgorde houden
+
+  if (sorteerAZ) {                                          // anders zie je het resultaat niet
+    sorteerAZ = false;
+    try { localStorage.setItem('kwartet-sortering', 'nr'); } catch (e) { /* */ }
+  }
+  save();
+  select(Math.max(0, game.quartets.findIndex((q) => q.id === huidigId)));
+  toast(`Hernummerd: ${tel.ja} × ja, ${tel.misschien} × misschien, ${tel.geen} zonder keuze, ${tel.nee} × nee.`,
+    9000, {
+      tekst: 'Ongedaan maken',
+      doe: () => {
+        game.quartets = opVolgorde(game.quartets, (q) => (oudeVolgorde.has(q.id) ? oudeVolgorde.get(q.id) : 1e6));
+        save();
+        select(Math.max(0, game.quartets.findIndex((q) => q.id === huidigId)));
+      },
+    });
+}
+
 function renderKeuzeTeller() {
   const tel = { ja: 0, misschien: 0, nee: 0, geen: 0 };
   for (const q of game.quartets) tel[q.keuze || 'geen']++;
@@ -2013,6 +2052,7 @@ async function init() {
 
   el('#gameTitle').addEventListener('input', (e) => { game.title = e.target.value; save(); });
   el('#addQuartet').addEventListener('click', addQuartet);
+  el('#hernummer').addEventListener('click', hernummer);
   wireSidebarHover();
   el('#logout').addEventListener('click', async () => {
     await store.logout();
