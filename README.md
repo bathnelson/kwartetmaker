@@ -255,6 +255,11 @@ wachtwoord - anders als tekst uitserveren.
   nummers op de kaartjes veranderen dus mee; al geprinte kaartjes kloppen
   daarna niet meer. Er komt eerst een bevestiging, en je kunt het meteen
   ongedaan maken.
+- **Volgorde verslepen**: sleep een kwartet in de zijbalk omhoog of omlaag om
+  de nummering handmatig te verfijnen. Een lijn laat zien waar hij terechtkomt
+  (boven- of onderhelft van het kwartet waar je op loslaat), en het kan meteen
+  ongedaan gemaakt worden. Staat de lijst op A–Z, dan kan verslepen niet: zet
+  A–Z dan even uit.
 - **Filteren**: de tellers boven de lijst zijn knoppen. Klik op ✓, ?, ✗ of ○
   (nog niet gekozen) om alleen die kwartetten te zien, en nog eens (of op
   *toon alles*) om weer alles te tonen. Het filter geldt alleen voor jouw

@@ -346,6 +346,33 @@ function zetFilter(keuze) {
 const KEUZE_RANG = { ja: 0, misschien: 1, nee: 3 };
 const rangVan = (q) => (q.keuze in KEUZE_RANG ? KEUZE_RANG[q.keuze] : 2);
 
+const KWARTET_TYPE = 'application/x-kwartet-kwartet';
+
+// Handmatig verslepen in de zijbalk: het kwartet komt vóór of ná het kwartet
+// waarop je loslaat, afhankelijk van de helft waar je bent.
+function verplaatsKwartet(id, doelIndex, erna) {
+  const van = game.quartets.findIndex((q) => q.id === id);
+  if (van < 0 || van === doelIndex) return;
+  const oudeVolgorde = new Map(game.quartets.map((q, i) => [q.id, i]));
+  const kwartet = game.quartets[van];
+  const doelId = game.quartets[doelIndex].id;
+  const rest = game.quartets.filter((q) => q.id !== id);
+  const pos = rest.findIndex((q) => q.id === doelId) + (erna ? 1 : 0);
+  rest.splice(pos, 0, kwartet);
+  game.quartets = rest;
+  save();
+  select(pos);
+  toast(`“${kwartet.theme.trim() || 'zonder thema'}” is nu kwartet ${pos + 1}.`, 7000, {
+    tekst: 'Ongedaan maken',
+    doe: () => {
+      game.quartets = [...game.quartets].sort((a, b) =>
+        (oudeVolgorde.has(a.id) ? oudeVolgorde.get(a.id) : 1e6) - (oudeVolgorde.has(b.id) ? oudeVolgorde.get(b.id) : 1e6));
+      save();
+      select(Math.max(0, game.quartets.findIndex((q) => q.id === id)));
+    },
+  });
+}
+
 function hernummer() {
   if (!game.quartets.some((q) => KEUZES[q.keuze])) {
     toast('Kies eerst bij een paar kwartetten ja, misschien of nee.', 5000);
@@ -432,7 +459,10 @@ function wireSidebarHover() {
   const close = () => { clearTimeout(timer); bar.classList.remove('expanded'); };
   bar.addEventListener('mouseenter', open);
   bar.addEventListener('mouseleave', close);
-  window.addEventListener('dragenter', close);      // nooit uitgeklapt tijdens slepen
+  // Bij slepen van buitenaf (foto's) inklappen, maar niet als je in de lijst zelf sleept.
+  window.addEventListener('dragenter', (e) => {
+    if (!e.dataTransfer || !e.dataTransfer.types.includes(KWARTET_TYPE)) close();
+  });
 }
 
 // A-Z sorteert alleen de lijst, niet het spel: het nummer staat óp de kaartjes,
@@ -480,6 +510,38 @@ function renderSidebar() {
     const titels = q.cards.map((c) => c.title.trim()).filter(Boolean);
     li.title = [q.theme.trim() || 'zonder thema', ...titels].join('\n');
     li.addEventListener('click', () => select(i));
+
+    // verslepen om de volgorde te verfijnen (niet als de lijst op A-Z staat)
+    li.draggable = !sorteerAZ;
+    if (sorteerAZ) li.title += '\n(Zet A–Z uit om de volgorde te verslepen)';
+    const isKwartet = (e) => e.dataTransfer.types.includes(KWARTET_TYPE);
+    li.addEventListener('dragstart', (e) => {
+      e.dataTransfer.setData(KWARTET_TYPE, q.id);
+      e.dataTransfer.effectAllowed = 'move';
+      li.classList.add('sleep');
+    });
+    li.addEventListener('dragend', () => {
+      li.classList.remove('sleep');
+      list.querySelectorAll('li').forEach((x) => x.classList.remove('boven', 'onder'));
+    });
+    li.addEventListener('dragover', (e) => {
+      if (!isKwartet(e)) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      const vak = li.getBoundingClientRect();
+      const onder = e.clientY > vak.top + vak.height / 2;
+      li.classList.toggle('onder', onder);
+      li.classList.toggle('boven', !onder);
+    });
+    li.addEventListener('dragleave', () => li.classList.remove('boven', 'onder'));
+    li.addEventListener('drop', (e) => {
+      if (!isKwartet(e)) return;
+      e.preventDefault();
+      const erna = li.classList.contains('onder');
+      li.classList.remove('boven', 'onder');
+      verplaatsKwartet(e.dataTransfer.getData(KWARTET_TYPE), i, erna);
+    });
+
     li.querySelector('.keuze').addEventListener('click', (e) => {
       e.stopPropagation();                         // niet ook het kwartet openen
       const nu = KEUZE_VOLGORDE.indexOf(q.keuze);

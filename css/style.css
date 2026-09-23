@@ -452,3 +452,9 @@ main { flex: 1; display: flex; min-height: 0; position: relative; }
 @media (hover: none) { .voorraad-foto .draai { display: block; } }
 
 .dialog-form input:disabled { opacity: .45; }
+
+/* ---------- kwartetten verslepen ---------- */
+.quartet-list li[draggable="true"] { cursor: grab; }
+.quartet-list li.sleep { opacity: .4; }
+.quartet-list li.boven { box-shadow: inset 0 2px 0 var(--ink); }
+.quartet-list li.onder { box-shadow: inset 0 -2px 0 var(--ink); }
