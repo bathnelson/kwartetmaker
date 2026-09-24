@@ -333,12 +333,16 @@ welke soort je het laatst koos.
 
 ## Export
 
-- *Exporteer dit kwartet* → zipbestand met één mapje, bijv.
-  `01 Actief/` met `1 Abseilen.png` … `4 Paragliden.png`.
-- *Exporteer alles* → één zipbestand met een mapje per kwartet.
+*Exporteer foto's* geeft de foto's zelf, niet de kaartjes: één zipbestand met
+per kwartet een mapje, bijvoorbeeld `01 Vakantie/1 Strand.jpg` … `4 Camping.jpg`,
+en de achterkantfoto als `achterkant.jpg`. Meegenomen worden de kwartetten met
+✓; heeft nog geen enkel kwartet een ✓, dan alles behalve de kwartetten met ✗.
 
-Kaartjes worden geëxporteerd als PNG van 744 × 1039 px: 63 × 88 mm op 300 dpi,
-het formaat van een standaard speelkaart.
+*Exporteer* in de editor doet hetzelfde voor één kwartet, ongeacht de keuze.
+
+Foto's gaan mee zoals ze zijn opgeslagen (jpeg, maximaal 1800 px). Heb je een
+foto gedraaid, dan komt hij rechtop in de zip. Wil je de kaartjes zelf, dan is
+dat *Printvellen…*.
 
 Pak het zipbestand uit met dubbelklikken in de Finder (macOS zet accenten in
 mapnamen dan goed neer; het `unzip`-commando in de Terminal kan daarover

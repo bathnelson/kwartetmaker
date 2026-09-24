@@ -1,6 +1,6 @@
 import * as store from './store.js';
 import { makeZip, readZip, downloadBlob } from './zip.js';
-import { drawCard, drawBack, photoRect, CARD_RATIO, EXPORT_WIDTH, FONT, gedraaid } from './render.js';
+import { drawCard, drawBack, photoRect, CARD_RATIO, FONT, gedraaid } from './render.js';
 import { makePdf } from './pdf.js';
 import { PALETTE, pickColor, isHex, inkOn, mix } from './colors.js';
 import { mergeGame, equal } from './sync.js';
@@ -604,7 +604,7 @@ function renderEditor() {
         <button type="button" class="k-nee" data-keuze="nee" title="Nee, niet bestellen">✗</button>
       </div>
       <div class="editor-actions">
-        <button id="exportQuartet" class="btn" title="Exporteer de vier kaartjes als mapje (zip)">Exporteer</button>
+        <button id="exportQuartet" class="btn" title="Exporteer de foto's van dit kwartet als mapje (zip)">Exporteer</button>
         <button id="deleteQuartet" class="btn">Verwijderen</button>
       </div>
     </div>
@@ -1033,51 +1033,80 @@ function safeName(s, fallback) {
   return t || fallback;
 }
 
-async function cardPng(q, qi, ci) {
-  const W = EXPORT_WIDTH;
+// Exporteren = de foto's zelf, per kwartet in een mapje. Niet de gerenderde
+// kaartjes: die maak je met Printvellen.
+
+/** De foto zoals hij hoort te staan: gedraaid als dat is ingesteld, anders het
+ *  originele bestand (dan blijft de kwaliteit precies zoals hij was). */
+async function fotoBytes(id) {
+  const blob = await store.getPhoto(id);
+  if (!blob) return null;
+  const draai = draaiVan(id);
+  if (!draai) return { data: new Uint8Array(await blob.arrayBuffer()), ext: 'jpg' };
+  const beeld = gedraaid(await createImageBitmap(blob), draai);
   const canvas = document.createElement('canvas');
-  canvas.width = W;
-  canvas.height = Math.round(W * CARD_RATIO);
-  drawCard(canvas.getContext('2d'), W, { ...cardModel(q, qi, ci), hints: false }, style(q));
-  const blob = await new Promise((res) => canvas.toBlob(res, 'image/png'));
-  return new Uint8Array(await blob.arrayBuffer());
+  canvas.width = beeld.width;
+  canvas.height = beeld.height;
+  canvas.getContext('2d').drawImage(beeld, 0, 0);
+  const gedraaidBlob = await new Promise((res) => canvas.toBlob(res, 'image/jpeg', 0.92));
+  return { data: new Uint8Array(await gedraaidBlob.arrayBuffer()), ext: 'jpg' };
 }
 
-async function quartetFiles(qi, prefixWithFolder = true) {
+async function fotoBestanden(qi, inMapje = true) {
   const q = game.quartets[qi];
-  for (const c of q.cards) await ensureImage(c.photoId);
-  const folder = `${String(qi + 1).padStart(2, '0')} ${safeName(q.theme, 'zonder thema')}`;
+  const map = `${String(qi + 1).padStart(2, '0')} ${safeName(q.theme, 'zonder thema')}`;
   const files = [];
   for (let ci = 0; ci < 4; ci++) {
-    const name = `${ci + 1} ${safeName(q.cards[ci].title, 'zonder titel')}.png`;
-    files.push({
-      name: prefixWithFolder ? `${folder}/${name}` : name,
-      data: await cardPng(q, qi, ci),
-    });
+    const kaart = q.cards[ci];
+    if (!kaart.photoId) continue;
+    const foto = await fotoBytes(kaart.photoId);
+    if (!foto) continue;
+    const naam = `${ci + 1} ${safeName(kaart.title, 'zonder titel')}.${foto.ext}`;
+    files.push({ name: inMapje ? `${map}/${naam}` : naam, data: foto.data });
   }
-  return { folder, files };
+  return { map, files };
 }
 
 async function exportQuartet(qi) {
-  toast('Bezig met exporteren…', 60000);
-  const { folder, files } = await quartetFiles(qi, true);
-  downloadBlob(makeZip(files), `${folder}.zip`);
-  toast(`"${folder}" geëxporteerd (4 kaartjes in een mapje).`);
+  toast('Foto\'s klaarzetten…', 60000);
+  const { map, files } = await fotoBestanden(qi, true);
+  if (!files.length) { toast('Dit kwartet heeft nog geen foto\'s.', 5000); return; }
+  downloadBlob(makeZip(files), `${map}.zip`);
+  toast(`"${map}" geëxporteerd: ${files.length} foto${files.length === 1 ? '' : "'s"}.`);
+}
+
+/** Welke kwartetten gaan mee: de actieve (✓). Heeft niemand ✓, dan alles
+ *  behalve de afgevallen (✗), zodat het ook werkt zonder gekozen te hebben. */
+function teExporteren() {
+  const metJa = game.quartets.map((q, qi) => ({ q, qi })).filter(({ q }) => q.keuze === 'ja');
+  if (metJa.length) return { lijst: metJa, alleenJa: true };
+  return {
+    lijst: game.quartets.map((q, qi) => ({ q, qi })).filter(({ q }) => q.keuze !== 'nee' && kwartetGebruikt(q)),
+    alleenJa: false,
+  };
 }
 
 async function exportAll() {
   const btn = el('#exportAll');
   btn.disabled = true;
   try {
-    const all = [];
-    for (let qi = 0; qi < game.quartets.length; qi++) {
-      toast(`Exporteren… kwartet ${qi + 1} van ${game.quartets.length}`, 60000);
-      const { files } = await quartetFiles(qi, true);
-      all.push(...files);
-      await new Promise((r) => setTimeout(r, 0));   // even lucht voor de UI
+    const { lijst, alleenJa } = teExporteren();
+    if (!lijst.length) { toast('Niets om te exporteren.', 5000); return; }
+    const alles = [];
+    for (const [n, { qi }] of lijst.entries()) {
+      toast(`Foto's klaarzetten… kwartet ${n + 1} van ${lijst.length}`, 60000);
+      const { files } = await fotoBestanden(qi, true);
+      alles.push(...files);
+      await new Promise((r) => setTimeout(r, 0));     // even lucht voor de UI
     }
-    downloadBlob(makeZip(all), `${safeName(game.title, 'Kwartet')}.zip`);
-    toast(`Klaar: ${game.quartets.length} mapjes met ${all.length} kaartjes.`);
+    if (game.back.photoId) {
+      const achter = await fotoBytes(game.back.photoId);
+      if (achter) alles.push({ name: `achterkant.${achter.ext}`, data: achter.data });
+    }
+    if (!alles.length) { toast('Nog geen foto\'s om te exporteren.', 5000); return; }
+    downloadBlob(makeZip(alles), `${safeName(game.title, 'Kwartet')} - foto's.zip`);
+    toast(`${alles.length} foto's uit ${lijst.length} kwartet${lijst.length === 1 ? '' : 'ten'}`
+      + (alleenJa ? ' met ✓' : '') + ' geëxporteerd.', 6000);
   } finally {
     btn.disabled = false;
   }
