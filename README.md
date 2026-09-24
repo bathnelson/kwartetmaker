@@ -341,7 +341,13 @@ en de achterkantfoto als `achterkant.jpg`. Meegenomen worden de kwartetten met
 *Exporteer* in de editor doet hetzelfde voor één kwartet, ongeacht de keuze.
 
 Foto's gaan mee zoals ze zijn opgeslagen (jpeg, maximaal 1800 px). Heb je een
-foto gedraaid, dan komt hij rechtop in de zip. Wil je de kaartjes zelf, dan is
+foto gedraaid, dan komt hij rechtop in de zip.
+
+Van staande (en vierkante) foto's komt er een liggende versie bij, met dezelfde
+naam plus `- liggend`: de hele foto in het midden, links en rechts opgevuld met
+de vervaagde foto, in de verhouding van het fotovak op het kaartje (ca. 4:3).
+Heb je de uitsnede op het kaartje verschoven of ingezoomd, dan staat die er ook
+zo in. Wil je de kaartjes zelf, dan is
 dat *Printvellen…*.
 
 Pak het zipbestand uit met dubbelklikken in de Finder (macOS zet accenten in

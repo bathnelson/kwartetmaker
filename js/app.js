@@ -1,6 +1,6 @@
 import * as store from './store.js';
 import { makeZip, readZip, downloadBlob } from './zip.js';
-import { drawCard, drawBack, photoRect, CARD_RATIO, FONT, gedraaid } from './render.js';
+import { drawCard, drawBack, drawPhoto, photoRect, CARD_RATIO, FONT, gedraaid } from './render.js';
 import { makePdf } from './pdf.js';
 import { PALETTE, pickColor, isHex, inkOn, mix } from './colors.js';
 import { mergeGame, equal } from './sync.js';
@@ -1052,6 +1052,28 @@ async function fotoBytes(id) {
   return { data: new Uint8Array(await gedraaidBlob.arrayBuffer()), ext: 'jpg' };
 }
 
+// Verhouding van het fotovak op het kaartje (liggend, ca. 4:3).
+const VAK_VERHOUDING = photoRect(1).w / photoRect(1).h;
+
+/** Van een staande foto ook een liggende versie: de hele foto in het midden,
+ *  links en rechts opgevuld met een vervaagde uitsnede - net als op het kaartje. */
+async function liggendeVersie(photoId, kaart) {
+  const blob = await store.getPhoto(photoId);
+  if (!blob) return null;
+  const beeld = gedraaid(await createImageBitmap(blob), draaiVan(photoId));
+  if (beeld.width / beeld.height >= VAK_VERHOUDING - 0.01) return null;   // al liggend genoeg
+  const hoogte = beeld.height;
+  const breedte = Math.round(hoogte * VAK_VERHOUDING);
+  const canvas = document.createElement('canvas');
+  canvas.width = breedte;
+  canvas.height = hoogte;
+  const passend = kaart && kaart.fit === 'passend';
+  drawPhoto(canvas.getContext('2d'), beeld, 0, 0, breedte, hoogte,
+    passend ? kaart.focus : { x: .5, y: .5 }, passend ? kaart.zoom : 1, 'passend');
+  const uit = await new Promise((res) => canvas.toBlob(res, 'image/jpeg', 0.92));
+  return new Uint8Array(await uit.arrayBuffer());
+}
+
 async function fotoBestanden(qi, inMapje = true) {
   const q = game.quartets[qi];
   const map = `${String(qi + 1).padStart(2, '0')} ${safeName(q.theme, 'zonder thema')}`;
@@ -1061,8 +1083,11 @@ async function fotoBestanden(qi, inMapje = true) {
     if (!kaart.photoId) continue;
     const foto = await fotoBytes(kaart.photoId);
     if (!foto) continue;
-    const naam = `${ci + 1} ${safeName(kaart.title, 'zonder titel')}.${foto.ext}`;
-    files.push({ name: inMapje ? `${map}/${naam}` : naam, data: foto.data });
+    const basis = `${ci + 1} ${safeName(kaart.title, 'zonder titel')}`;
+    const pad = (naam) => (inMapje ? `${map}/${naam}` : naam);
+    files.push({ name: pad(`${basis}.${foto.ext}`), data: foto.data });
+    const liggend = await liggendeVersie(kaart.photoId, kaart);
+    if (liggend) files.push({ name: pad(`${basis} - liggend.jpg`), data: liggend });
   }
   return { map, files };
 }
@@ -1072,7 +1097,9 @@ async function exportQuartet(qi) {
   const { map, files } = await fotoBestanden(qi, true);
   if (!files.length) { toast('Dit kwartet heeft nog geen foto\'s.', 5000); return; }
   downloadBlob(makeZip(files), `${map}.zip`);
-  toast(`"${map}" geëxporteerd: ${files.length} foto${files.length === 1 ? '' : "'s"}.`);
+  const liggend = files.filter((f) => f.name.includes(' - liggend.')).length;
+  toast(`"${map}" geëxporteerd: ${files.length - liggend} foto${files.length - liggend === 1 ? '' : "'s"}`
+    + (liggend ? ` plus ${liggend} liggende versie${liggend === 1 ? '' : 's'}.` : '.'), 6000);
 }
 
 /** Welke kwartetten gaan mee: de actieve (✓). Heeft niemand ✓, dan alles
@@ -1105,8 +1132,10 @@ async function exportAll() {
     }
     if (!alles.length) { toast('Nog geen foto\'s om te exporteren.', 5000); return; }
     downloadBlob(makeZip(alles), `${safeName(game.title, 'Kwartet')} - foto's.zip`);
-    toast(`${alles.length} foto's uit ${lijst.length} kwartet${lijst.length === 1 ? '' : 'ten'}`
-      + (alleenJa ? ' met ✓' : '') + ' geëxporteerd.', 6000);
+    const liggend = alles.filter((f) => f.name.includes(' - liggend.')).length;
+    toast(`${alles.length - liggend} foto's uit ${lijst.length} kwartet${lijst.length === 1 ? '' : 'ten'}`
+      + (alleenJa ? ' met ✓' : '') + ' geëxporteerd'
+      + (liggend ? `, plus ${liggend} liggende versie${liggend === 1 ? '' : 's'} van staande foto's.` : '.'), 7000);
   } finally {
     btn.disabled = false;
   }
