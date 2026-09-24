@@ -217,7 +217,8 @@ wachtwoord - anders als tekst uitserveren.
   en bij de achterkant in het printvenster.
 - **Staande foto's**: het fotovak is liggend. Een staande foto krijgt daarom
   automatisch *hele foto*: de foto staat er helemaal op, met links en rechts een
-  vervaagde versie van dezelfde foto als opvulling. Met ⬚/▣ wissel je per
+  vervaagde opvulling. Die opvulling is de foto zelf, gespiegeld doorgetekend
+  vanaf de rand en daarna flink vervaagd, zodat de kleuren netjes doorlopen. Met ⬚/▣ wissel je per
   kaartje tussen dat en *vullen* (kader helemaal vol, randen vallen weg). Ook bij
   *hele foto* kun je slepen en zoomen: schuif hem naar links of rechts binnen het
   kader, of zoom in en schuif dan ook op en neer. Voor de achterkant zit

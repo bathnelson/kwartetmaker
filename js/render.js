@@ -66,24 +66,86 @@ export function gedraaid(img, graden) {
 
 // Vervaagde opvulling: de foto sterk verkleinen en weer uitvergroten. Werkt in
 // elke browser (ook zonder ctx.filter) en ziet er in preview en print hetzelfde uit.
-function drawBlurFill(ctx, img, x, y, w, h) {
-  const stap = document.createElement('canvas');
-  stap.width = Math.max(8, Math.round(w / 5));
-  stap.height = Math.max(8, Math.round(h / 5));
-  const s1 = stap.getContext('2d');
-  s1.imageSmoothingQuality = 'high';
-  drawCover(s1, img, 0, 0, stap.width, stap.height);
+// Kan deze browser canvas-filters? (Safari kan dit sinds versie 18.)
+const kanFilteren = (() => {
+  try {
+    return typeof document.createElement('canvas').getContext('2d').filter === 'string';
+  } catch (e) {
+    return false;
+  }
+})();
+
+/**
+ * Vult het vak met een vervaagde achtergrond. Het beeld wordt gespiegeld
+ * doorgetekend vanaf de plek waar de foto zelf komt te staan, zodat de kleuren
+ * bij de rand van de foto precies doorlopen; daarna gaat er een flinke
+ * vervaging overheen. Zonder die spiegeling zie je één donker of fel deel van
+ * de foto als band naast de foto staan.
+ *
+ * @param {{dx:number,dy:number,dw:number,dh:number}} plek waar de foto zelf komt
+ */
+function drawBlurFill(ctx, img, x, y, w, h, plek) {
+  // Op een kleinere versie werken: sneller, en na het vervagen zie je er niets van.
+  const doel = 480;
+  const schaal = Math.min(1, doel / Math.max(w, h));
   const klein = document.createElement('canvas');
-  klein.width = Math.max(6, Math.round(w / 24));
-  klein.height = Math.max(6, Math.round(h / 24));
-  const s2 = klein.getContext('2d');
-  s2.imageSmoothingQuality = 'high';
-  s2.drawImage(stap, 0, 0, klein.width, klein.height);
+  klein.width = Math.max(16, Math.round(w * schaal));
+  klein.height = Math.max(16, Math.round(h * schaal));
+  const k = klein.getContext('2d');
+  k.imageSmoothingQuality = 'high';
+
+  const pw = Math.max(1, plek.dw * schaal);
+  const ph = Math.max(1, plek.dh * schaal);
+  const px = (plek.dx - x) * schaal;
+  const py = (plek.dy - y) * schaal;
+  // Gespiegeld doortegelen tot voorbij de randen (ruim, voor de vervaging).
+  const vanI = Math.floor((-0.2 * klein.width - px) / pw);
+  const totI = Math.ceil((1.2 * klein.width - px) / pw);
+  const vanJ = Math.floor((-0.2 * klein.height - py) / ph);
+  const totJ = Math.ceil((1.2 * klein.height - py) / ph);
+  for (let i = vanI; i <= totI; i++) {
+    for (let j = vanJ; j <= totJ; j++) {
+      const sx = i % 2 === 0 ? 1 : -1;
+      const sy = j % 2 === 0 ? 1 : -1;
+      k.save();
+      k.translate(px + i * pw + (sx < 0 ? pw : 0), py + j * ph + (sy < 0 ? ph : 0));
+      k.scale(sx, sy);
+      k.drawImage(img, 0, 0, pw, ph);
+      k.restore();
+    }
+  }
 
   ctx.save();
+  ctx.beginPath();
+  ctx.rect(x, y, w, h);
+  ctx.clip();
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = 'high';
-  ctx.drawImage(klein, x - w * 0.05, y - h * 0.05, w * 1.1, h * 1.1);
+
+  if (kanFilteren) {
+    ctx.filter = `blur(${Math.max(6, Math.round(Math.max(w, h) * 0.05))}px)`;
+    ctx.drawImage(klein, x - w * 0.1, y - h * 0.1, w * 1.2, h * 1.2);
+    ctx.filter = 'none';
+  } else {
+    // Terugval voor browsers zonder canvas-filter: een paar keer verkleinen en
+    // weer vergroten, en een paar keer half doorzichtig over elkaar.
+    let bron = klein;
+    for (let i = 0; i < 3; i++) {
+      const stap = document.createElement('canvas');
+      stap.width = Math.max(4, Math.round(bron.width / 2.5));
+      stap.height = Math.max(4, Math.round(bron.height / 2.5));
+      const c = stap.getContext('2d');
+      c.imageSmoothingQuality = 'high';
+      c.drawImage(bron, 0, 0, stap.width, stap.height);
+      bron = stap;
+    }
+    for (let i = 0; i < 3; i++) {
+      ctx.globalAlpha = i === 0 ? 1 : 0.5;
+      ctx.drawImage(bron, x - w * 0.1 - i, y - h * 0.1 - i, w * 1.2, h * 1.2);
+    }
+    ctx.globalAlpha = 1;
+  }
+
   ctx.fillStyle = 'rgba(0,0,0,0.10)';          // iets donkerder, zodat de foto zelf eruit springt
   ctx.fillRect(x, y, w, h);
   ctx.restore();
@@ -98,7 +160,6 @@ export function drawPhoto(ctx, img, x, y, w, h, focus, zoom, fit) {
     drawCover(ctx, img, x, y, w, h, focus, zoom);
     return;
   }
-  drawBlurFill(ctx, img, x, y, w, h);
   const s = Math.min(w / img.width, h / img.height) * (zoom || 1);
   const dw = img.width * s;
   const dh = img.height * s;
@@ -106,7 +167,10 @@ export function drawPhoto(ctx, img, x, y, w, h, focus, zoom, fit) {
   // (of boven- tot onderrand); is hij groter, dan welk deel er in beeld is.
   const fx = focus ? focus.x : 0.5;
   const fy = focus ? focus.y : 0.5;
-  ctx.drawImage(img, x + (w - dw) * fx, y + (h - dh) * fy, dw, dh);
+  const dx = x + (w - dw) * fx;
+  const dy = y + (h - dh) * fy;
+  drawBlurFill(ctx, img, x, y, w, h, { dx, dy, dw, dh });
+  ctx.drawImage(img, dx, dy, dw, dh);
 }
 
 function fitText(ctx, text, maxWidth, baseSize, weight) {
